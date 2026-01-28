@@ -1,8 +1,9 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { RideDetailCard } from '@/components/rides';
 import { Button } from '@/components/ui';
-import { getRide } from '@/lib/actions/rides';
+import { DriverRideDetail } from '@/components/rides';
+import { getDriverRide } from '@/lib/actions/rides-driver';
+import { getDriverByUserId } from '@/lib/actions/drivers-v2';
 import { createClient } from '@/lib/supabase/server';
 
 interface DriverRideDetailPageProps {
@@ -19,39 +20,36 @@ export default async function DriverRideDetailPage({ params }: DriverRideDetailP
     redirect('/');
   }
 
-  // Get driver by user_id
-  const { data: driver } = await supabase
-    .from('drivers')
-    .select('id')
-    .eq('user_id', user.id)
-    .single();
+  // Get driver profile
+  const driver = await getDriverByUserId(user.id);
 
   if (!driver) {
     redirect('/');
   }
 
-  const ride = await getRide(id);
+  // Get ride with authorization check
+  const ride = await getDriverRide(id, driver.id);
 
   if (!ride) {
     notFound();
   }
 
-  // Verify this ride belongs to the driver
-  if (ride.driver_id !== driver.id) {
-    notFound();
-  }
-
   return (
-    <div>
-      <div className="mb-4">
+    <div className="pb-8">
+      {/* Back Navigation */}
+      <div className="mb-6 pt-4">
         <Link href="/my-rides">
-          <Button variant="ghost" size="sm">
-            ← Zurück zur Übersicht
+          <Button variant="ghost" size="sm" className="gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Zurueck zur Uebersicht
           </Button>
         </Link>
       </div>
 
-      <RideDetailCard ride={ride} showActions isDriver />
+      {/* Ride Detail Component */}
+      <DriverRideDetail ride={ride} driverId={driver.id} />
     </div>
   );
 }

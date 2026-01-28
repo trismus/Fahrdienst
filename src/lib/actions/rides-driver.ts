@@ -3,7 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { validateId } from '@/lib/utils/sanitize';
-import type { RideWithRelations, RideStatus } from './rides-v2';
+import type { RideWithRelations, RideStatus, RideSubstatus } from './rides-v2';
+import {
+  notifyRideConfirmed,
+  notifyRideStarted,
+  notifyDriverArrived,
+  notifyPatientPickedUp,
+  notifyRideCompleted,
+} from '@/lib/sms';
 
 // =============================================================================
 // DRIVER-SPECIFIC RIDE ACTIONS
@@ -157,26 +164,25 @@ export async function driverConfirmRide(
   if (currentRide.status !== 'planned') {
     return {
       success: false,
-      message: `Fahrt kann nicht bestätigt werden (aktueller Status: ${currentRide.status})`
+      message: `Fahrt kann nicht bestaetigt werden (aktueller Status: ${currentRide.status})`
     };
   }
 
   // Update status
   const { error: updateError } = await supabase
     .from('rides')
-    .update({ status: 'confirmed' })
+    .update({
+      status: 'confirmed',
+      substatus: 'waiting'
+    })
     .eq('id', validRideId);
 
   if (updateError) {
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
-  revalidatePath('/my-rides');
-  revalidatePath(`/my-rides/${validRideId}`);
-  revalidatePath('/rides');
-  revalidatePath('/dashboard');
-
-  return { success: true, message: 'Fahrt erfolgreich bestätigt' };
+  revalidatePaths(validRideId);
+  return { success: true, message: 'Fahrt erfolgreich bestaetigt' };
 }
 
 /**
@@ -218,7 +224,8 @@ export async function driverRejectRide(
     .from('rides')
     .update({
       driver_id: null,
-      status: 'planned'
+      status: 'planned',
+      substatus: null
     })
     .eq('id', validRideId);
 
@@ -226,16 +233,14 @@ export async function driverRejectRide(
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
-  revalidatePath('/my-rides');
-  revalidatePath('/rides');
-  revalidatePath('/dashboard');
-
+  revalidatePaths(validRideId);
   return { success: true, message: 'Fahrt wurde abgelehnt' };
 }
 
 /**
- * Driver starts a confirmed ride.
- * Transition: confirmed -> in_progress
+ * Driver starts a confirmed ride (leaves for pickup).
+ * Transition: confirmed -> in_progress, substatus: waiting -> en_route_pickup
+ * Records started_at timestamp.
  */
 export async function driverStartRide(
   rideId: string,
@@ -267,27 +272,182 @@ export async function driverStartRide(
     };
   }
 
-  // Update status
+  const now = new Date().toISOString();
+
+  // Update status and record started_at
   const { error: updateError } = await supabase
     .from('rides')
-    .update({ status: 'in_progress' })
+    .update({
+      status: 'in_progress',
+      substatus: 'en_route_pickup',
+      started_at: now
+    })
     .eq('id', validRideId);
 
   if (updateError) {
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
-  revalidatePath('/my-rides');
-  revalidatePath(`/my-rides/${validRideId}`);
-  revalidatePath('/rides');
-  revalidatePath('/dashboard');
+  revalidatePaths(validRideId);
+  return { success: true, message: 'Fahrt gestartet - auf dem Weg zur Abholung' };
+}
 
-  return { success: true, message: 'Fahrt gestartet' };
+/**
+ * Driver confirms arrival at pickup location.
+ * Transition: substatus en_route_pickup -> at_pickup
+ */
+export async function driverArrivedAtPickup(
+  rideId: string,
+  driverId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const validRideId = validateId(rideId, 'ride');
+  const validDriverId = validateId(driverId, 'driver');
+
+  const { data: currentRide, error: fetchError } = await supabase
+    .from('rides')
+    .select('id, status, substatus, driver_id')
+    .eq('id', validRideId)
+    .single();
+
+  if (fetchError || !currentRide) {
+    return { success: false, message: 'Fahrt nicht gefunden' };
+  }
+
+  if (currentRide.driver_id !== validDriverId) {
+    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  }
+
+  if (currentRide.status !== 'in_progress' || currentRide.substatus !== 'en_route_pickup') {
+    return {
+      success: false,
+      message: 'Fahrt ist nicht im Status "Auf dem Weg zur Abholung"'
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from('rides')
+    .update({ substatus: 'at_pickup' })
+    .eq('id', validRideId);
+
+  if (updateError) {
+    return { success: false, message: `Fehler: ${updateError.message}` };
+  }
+
+  revalidatePaths(validRideId);
+  return { success: true, message: 'Bei Patient angekommen' };
+}
+
+/**
+ * Driver confirms patient pickup.
+ * Transition: substatus at_pickup -> en_route_destination
+ * Records picked_up_at timestamp.
+ */
+export async function driverPickedUpPatient(
+  rideId: string,
+  driverId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const validRideId = validateId(rideId, 'ride');
+  const validDriverId = validateId(driverId, 'driver');
+
+  const { data: currentRide, error: fetchError } = await supabase
+    .from('rides')
+    .select('id, status, substatus, driver_id')
+    .eq('id', validRideId)
+    .single();
+
+  if (fetchError || !currentRide) {
+    return { success: false, message: 'Fahrt nicht gefunden' };
+  }
+
+  if (currentRide.driver_id !== validDriverId) {
+    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  }
+
+  // Allow pickup from either en_route_pickup or at_pickup
+  if (currentRide.status !== 'in_progress' ||
+      (currentRide.substatus !== 'en_route_pickup' && currentRide.substatus !== 'at_pickup')) {
+    return {
+      success: false,
+      message: 'Fahrt ist nicht im richtigen Status fuer Abholung'
+    };
+  }
+
+  const now = new Date().toISOString();
+
+  const { error: updateError } = await supabase
+    .from('rides')
+    .update({
+      substatus: 'en_route_destination',
+      picked_up_at: now
+    })
+    .eq('id', validRideId);
+
+  if (updateError) {
+    return { success: false, message: `Fehler: ${updateError.message}` };
+  }
+
+  revalidatePaths(validRideId);
+  return { success: true, message: 'Patient abgeholt - auf dem Weg zum Ziel' };
+}
+
+/**
+ * Driver confirms arrival at destination.
+ * Transition: substatus en_route_destination -> at_destination
+ * Records arrived_at timestamp.
+ */
+export async function driverArrivedAtDestination(
+  rideId: string,
+  driverId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const validRideId = validateId(rideId, 'ride');
+  const validDriverId = validateId(driverId, 'driver');
+
+  const { data: currentRide, error: fetchError } = await supabase
+    .from('rides')
+    .select('id, status, substatus, driver_id')
+    .eq('id', validRideId)
+    .single();
+
+  if (fetchError || !currentRide) {
+    return { success: false, message: 'Fahrt nicht gefunden' };
+  }
+
+  if (currentRide.driver_id !== validDriverId) {
+    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  }
+
+  if (currentRide.status !== 'in_progress' || currentRide.substatus !== 'en_route_destination') {
+    return {
+      success: false,
+      message: 'Fahrt ist nicht im Status "Auf dem Weg zum Ziel"'
+    };
+  }
+
+  const now = new Date().toISOString();
+
+  const { error: updateError } = await supabase
+    .from('rides')
+    .update({
+      substatus: 'at_destination',
+      arrived_at: now
+    })
+    .eq('id', validRideId);
+
+  if (updateError) {
+    return { success: false, message: `Fehler: ${updateError.message}` };
+  }
+
+  revalidatePaths(validRideId);
+  return { success: true, message: 'Am Ziel angekommen' };
 }
 
 /**
  * Driver completes a ride.
- * Transition: in_progress -> completed
+ * Transition: in_progress -> completed, substatus: any -> completed
+ * Records completed_at timestamp.
  */
 export async function driverCompleteRide(
   rideId: string,
@@ -300,7 +460,7 @@ export async function driverCompleteRide(
   // Verify ride belongs to driver and is in progress
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
-    .select('id, status, driver_id')
+    .select('id, status, substatus, driver_id, picked_up_at, arrived_at')
     .eq('id', validRideId)
     .single();
 
@@ -319,27 +479,114 @@ export async function driverCompleteRide(
     };
   }
 
-  // Update status
+  const now = new Date().toISOString();
+
+  // Build update object, filling in missing intermediate timestamps if needed
+  const updateData: Record<string, unknown> = {
+    status: 'completed',
+    substatus: 'completed',
+    completed_at: now
+  };
+
+  // If arrived_at is missing, set it to now (in case driver skipped intermediate steps)
+  if (!currentRide.arrived_at) {
+    updateData.arrived_at = now;
+  }
+
+  // If picked_up_at is missing, set it to now (edge case handling)
+  if (!currentRide.picked_up_at) {
+    updateData.picked_up_at = now;
+  }
+
   const { error: updateError } = await supabase
     .from('rides')
-    .update({ status: 'completed' })
+    .update(updateData)
     .eq('id', validRideId);
 
   if (updateError) {
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
-  revalidatePath('/my-rides');
-  revalidatePath(`/my-rides/${validRideId}`);
-  revalidatePath('/rides');
-  revalidatePath('/dashboard');
+  revalidatePaths(validRideId);
+  return { success: true, message: 'Fahrt erfolgreich abgeschlossen' };
+}
 
+/**
+ * Quick complete action for simple rides.
+ * Skips intermediate steps and goes directly to completed.
+ * Records all timestamps at once.
+ */
+export async function driverQuickCompleteRide(
+  rideId: string,
+  driverId: string
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const validRideId = validateId(rideId, 'ride');
+  const validDriverId = validateId(driverId, 'driver');
+
+  const { data: currentRide, error: fetchError } = await supabase
+    .from('rides')
+    .select('id, status, driver_id, started_at')
+    .eq('id', validRideId)
+    .single();
+
+  if (fetchError || !currentRide) {
+    return { success: false, message: 'Fahrt nicht gefunden' };
+  }
+
+  if (currentRide.driver_id !== validDriverId) {
+    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  }
+
+  // Allow quick complete from confirmed or in_progress
+  if (currentRide.status !== 'confirmed' && currentRide.status !== 'in_progress') {
+    return {
+      success: false,
+      message: `Fahrt kann nicht abgeschlossen werden (aktueller Status: ${currentRide.status})`
+    };
+  }
+
+  const now = new Date().toISOString();
+
+  const updateData: Record<string, unknown> = {
+    status: 'completed',
+    substatus: 'completed',
+    completed_at: now
+  };
+
+  // Set all intermediate timestamps if not already set
+  if (!currentRide.started_at) {
+    updateData.started_at = now;
+  }
+  updateData.picked_up_at = now;
+  updateData.arrived_at = now;
+
+  const { error: updateError } = await supabase
+    .from('rides')
+    .update(updateData)
+    .eq('id', validRideId);
+
+  if (updateError) {
+    return { success: false, message: `Fehler: ${updateError.message}` };
+  }
+
+  revalidatePaths(validRideId);
   return { success: true, message: 'Fahrt erfolgreich abgeschlossen' };
 }
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
+
+/**
+ * Revalidate all paths that could be affected by ride changes.
+ */
+function revalidatePaths(rideId: string): void {
+  revalidatePath('/my-rides');
+  revalidatePath(`/my-rides/${rideId}`);
+  revalidatePath('/rides');
+  revalidatePath('/dashboard');
+}
 
 /**
  * Transform raw database rows to typed RideWithRelations objects.
@@ -359,9 +606,15 @@ function transformRideRows(data: Record<string, unknown>[]): RideWithRelations[]
       arrivalTime: row.arrival_time as string,
       returnTime: row.return_time as string | null,
       status: row.status as RideStatus,
+      substatus: (row.substatus as RideSubstatus) || null,
       recurrenceGroup: row.recurrence_group as string | null,
       estimatedDuration: row.estimated_duration as number | null,
       estimatedDistance: row.estimated_distance as number | null,
+      // Execution timestamps
+      startedAt: row.started_at as string | null,
+      pickedUpAt: row.picked_up_at as string | null,
+      arrivedAt: row.arrived_at as string | null,
+      completedAt: row.completed_at as string | null,
       cancelledAt: row.cancelled_at as string | null,
       cancellationReason: row.cancellation_reason as string | null,
       notes: row.notes as string | null,
@@ -446,9 +699,15 @@ export interface DriverRide {
   arrivalTime: string;
   returnTime: string | null;
   status: RideStatus;
+  substatus: RideSubstatus | null;
   recurrenceGroup: string | null;
   estimatedDuration: number | null;
   estimatedDistance: number | null;
+  // Execution timestamps
+  startedAt: string | null;
+  pickedUpAt: string | null;
+  arrivedAt: string | null;
+  completedAt: string | null;
   notes: string | null;
   patient: DriverRidePatient;
   destination: DriverRideDestination;

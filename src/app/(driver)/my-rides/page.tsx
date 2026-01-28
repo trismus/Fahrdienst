@@ -1,9 +1,52 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { RideList } from '@/components/rides';
 import { Card, StatusBadge } from '@/components/ui';
-import { getRidesForDriver } from '@/lib/actions/rides';
+import { DriverRideList } from '@/components/rides';
+import { getDriverRides } from '@/lib/actions/rides-driver';
+import { getDriverByUserId } from '@/lib/actions/drivers-v2';
 import { createClient } from '@/lib/supabase/server';
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
+
+function getDateRanges() {
+  const now = new Date();
+
+  // Today
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date(now);
+  todayEnd.setHours(23, 59, 59, 999);
+
+  // Tomorrow
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const tomorrowEnd = new Date(todayEnd);
+  tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+
+  // This week (rest of week after tomorrow)
+  const weekEnd = new Date(todayStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  weekEnd.setHours(23, 59, 59, 999);
+
+  return {
+    today: { start: todayStart.toISOString(), end: todayEnd.toISOString() },
+    tomorrow: { start: tomorrowStart.toISOString(), end: tomorrowEnd.toISOString() },
+    week: { start: tomorrowEnd.toISOString(), end: weekEnd.toISOString() },
+  };
+}
+
+function formatTime(isoString: string) {
+  return new Date(isoString).toLocaleTimeString('de-CH', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+// =============================================================================
+// PAGE COMPONENT
+// =============================================================================
 
 export default async function DriverRidesPage() {
   const supabase = await createClient();
@@ -13,12 +56,8 @@ export default async function DriverRidesPage() {
     redirect('/');
   }
 
-  // Get driver by user_id
-  const { data: driver } = await supabase
-    .from('drivers')
-    .select('id, name')
-    .eq('user_id', user.id)
-    .single();
+  // Get driver profile
+  const driver = await getDriverByUserId(user.id);
 
   if (!driver) {
     return (
@@ -36,44 +75,58 @@ export default async function DriverRidesPage() {
     );
   }
 
-  const rides = await getRidesForDriver(driver.id);
+  // Get all rides for the driver
+  const allRides = await getDriverRides(driver.id);
+  const dateRanges = getDateRanges();
 
-  // Split into categories
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Categorize rides
+  const pendingRides = allRides.filter((r) => r.status === 'planned');
 
-  const pendingRides = rides.filter((r) => r.status === 'planned');
-  const todaysRides = rides.filter((r) => {
-    const pickupDate = new Date(r.pickup_time);
-    return pickupDate >= today && pickupDate < tomorrow && r.status !== 'completed' && r.status !== 'cancelled';
+  const todaysRides = allRides.filter((r) => {
+    const pickupDate = new Date(r.pickupTime);
+    return pickupDate >= new Date(dateRanges.today.start) &&
+           pickupDate <= new Date(dateRanges.today.end) &&
+           r.status !== 'completed' &&
+           r.status !== 'cancelled';
   });
-  const upcomingRides = rides.filter((r) => {
-    const pickupDate = new Date(r.pickup_time);
-    return pickupDate >= tomorrow && r.status !== 'completed' && r.status !== 'cancelled';
+
+  const tomorrowsRides = allRides.filter((r) => {
+    const pickupDate = new Date(r.pickupTime);
+    return pickupDate >= new Date(dateRanges.tomorrow.start) &&
+           pickupDate <= new Date(dateRanges.tomorrow.end) &&
+           r.status !== 'completed' &&
+           r.status !== 'cancelled';
+  });
+
+  const upcomingRides = allRides.filter((r) => {
+    const pickupDate = new Date(r.pickupTime);
+    return pickupDate > new Date(dateRanges.tomorrow.end) &&
+           r.status !== 'completed' &&
+           r.status !== 'cancelled';
   });
 
   // Get next ride (earliest pending or today's ride)
-  const nextRide = [...pendingRides, ...todaysRides].sort((a, b) =>
-    new Date(a.pickup_time).getTime() - new Date(b.pickup_time).getTime()
-  )[0];
+  const activeRides = [...todaysRides].filter(
+    (r) => r.status === 'planned' || r.status === 'confirmed' || r.status === 'in_progress'
+  ).sort((a, b) => new Date(a.pickupTime).getTime() - new Date(b.pickupTime).getTime());
+
+  const nextRide = activeRides[0];
 
   return (
     <div className="space-y-8 pb-8">
       {/* Header */}
       <div className="pt-6">
         <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100 mb-2">
-          Hallo {driver.name.split(' ')[0]}
+          Hallo {driver.firstName}
         </h1>
         <p className="text-neutral-500 dark:text-neutral-400">
           {todaysRides.length > 0
-            ? `Du hast ${todaysRides.length} ${todaysRides.length === 1 ? 'Fahrt' : 'Fahrten'} für heute`
-            : 'Keine Fahrten für heute geplant'}
+            ? `Du hast ${todaysRides.length} ${todaysRides.length === 1 ? 'Fahrt' : 'Fahrten'} fuer heute`
+            : 'Keine Fahrten fuer heute geplant'}
         </p>
       </div>
 
-      {/* Next Ride Hero */}
+      {/* Next Ride Hero Card */}
       {nextRide && (
         <Link href={`/my-rides/${nextRide.id}`}>
           <Card hover padding="none" className="overflow-hidden border-2 border-accent">
@@ -81,13 +134,12 @@ export default async function DriverRidesPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <p className="text-xs font-semibold text-accent-700 dark:text-accent-300 uppercase tracking-wide mb-1">
-                    {nextRide.status === 'planned' ? 'Bestätigung erforderlich' : 'Nächste Fahrt'}
+                    {nextRide.status === 'planned' ? 'Bestaetigung erforderlich' :
+                     nextRide.status === 'confirmed' ? 'Naechste Fahrt' :
+                     nextRide.status === 'in_progress' ? 'Aktive Fahrt' : 'Naechste Fahrt'}
                   </p>
                   <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-                    {new Date(nextRide.pickup_time).toLocaleTimeString('de-CH', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
+                    {formatTime(nextRide.pickupTime)}
                   </h2>
                 </div>
                 <StatusBadge status={nextRide.status} />
@@ -96,63 +148,82 @@ export default async function DriverRidesPage() {
                 <div>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Patient</p>
                   <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                    {nextRide.patient?.name}
+                    {nextRide.patient.firstName} {nextRide.patient.lastName}
                   </p>
                 </div>
                 <div>
                   <p className="text-sm text-neutral-600 dark:text-neutral-400 mb-1">Ziel</p>
                   <p className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-                    {nextRide.destination?.name}
+                    {nextRide.destination.name}
                   </p>
                 </div>
+                {/* Special needs indicator */}
+                {(nextRide.patient.needsWheelchair || nextRide.patient.needsWalker || nextRide.patient.needsAssistance) && (
+                  <div className="flex items-center gap-2 pt-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300 text-xs font-medium rounded-full">
+                      <span>!</span>
+                      {nextRide.patient.needsWheelchair && 'Rollstuhl'}
+                      {nextRide.patient.needsWheelchair && nextRide.patient.needsWalker && ' + '}
+                      {nextRide.patient.needsWalker && 'Rollator'}
+                      {(nextRide.patient.needsWheelchair || nextRide.patient.needsWalker) && nextRide.patient.needsAssistance && ' + '}
+                      {nextRide.patient.needsAssistance && 'Begleitung'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </Card>
         </Link>
       )}
 
-      {/* Pending confirmation */}
+      {/* Pending Confirmations */}
       {pendingRides.length > 0 && (
         <div>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
             <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
-              Ausstehende Bestätigungen
+              Ausstehende Bestaetigungen
             </h2>
             <span className="ml-auto text-sm font-semibold text-warning-dark bg-warning-light px-2 py-1 rounded-full">
               {pendingRides.length}
             </span>
           </div>
-          <RideList rides={pendingRides} linkPrefix="/my-rides" />
+          <DriverRideList rides={pendingRides} />
         </div>
       )}
 
-      {/* Today */}
+      {/* Today's Rides */}
       {todaysRides.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
             Heute
           </h2>
-          <RideList
-            rides={todaysRides}
-            emptyMessage="Keine Fahrten für heute"
-            linkPrefix="/my-rides"
-          />
+          <DriverRideList rides={todaysRides} emptyMessage="Keine Fahrten fuer heute" />
         </div>
       )}
 
-      {/* Upcoming */}
+      {/* Tomorrow's Rides */}
+      {tomorrowsRides.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
+            Morgen
+          </h2>
+          <DriverRideList rides={tomorrowsRides} />
+        </div>
+      )}
+
+      {/* Upcoming Rides */}
       {upcomingRides.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100 mb-4">
             Kommende Fahrten
           </h2>
-          <RideList rides={upcomingRides} linkPrefix="/my-rides" />
+          <DriverRideList rides={upcomingRides} />
         </div>
       )}
 
-      {/* Empty state when no rides at all */}
-      {rides.length === 0 && (
+      {/* Empty State */}
+      {allRides.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 px-4">
           <div className="w-24 h-24 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-6">
             <svg className="w-12 h-12 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">

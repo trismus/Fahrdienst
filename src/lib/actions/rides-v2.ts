@@ -12,6 +12,14 @@ import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from 
 
 export type RideStatus = 'planned' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
+export type RideSubstatus =
+  | 'waiting'
+  | 'en_route_pickup'
+  | 'at_pickup'
+  | 'en_route_destination'
+  | 'at_destination'
+  | 'completed';
+
 export interface Ride {
   id: string;
   patientId: string;
@@ -21,9 +29,15 @@ export interface Ride {
   arrivalTime: string;
   returnTime: string | null;
   status: RideStatus;
+  substatus: RideSubstatus | null;
   recurrenceGroup: string | null;
   estimatedDuration: number | null;
   estimatedDistance: number | null;
+  // Execution timestamps (Sprint 4)
+  startedAt: string | null;
+  pickedUpAt: string | null;
+  arrivedAt: string | null;
+  completedAt: string | null;
   cancelledAt: string | null;
   cancellationReason: string | null;
   notes: string | null;
@@ -40,9 +54,15 @@ export interface RideRow {
   arrival_time: string;
   return_time: string | null;
   status: RideStatus;
+  substatus: RideSubstatus | null;
   recurrence_group: string | null;
   estimated_duration: number | null;
   estimated_distance: number | null;
+  // Execution timestamps
+  started_at: string | null;
+  picked_up_at: string | null;
+  arrived_at: string | null;
+  completed_at: string | null;
   cancelled_at: string | null;
   cancellation_reason: string | null;
   notes: string | null;
@@ -56,11 +76,16 @@ export interface RideWithRelations extends Ride {
     firstName: string;
     lastName: string;
     street: string;
+    postalCode: string;
     city: string;
     phone: string;
     needsWheelchair: boolean;
     needsWalker: boolean;
     needsAssistance: boolean;
+    pickupInstructions?: string | null;
+    notes?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   };
   driver: {
     id: string;
@@ -72,7 +97,12 @@ export interface RideWithRelations extends Ride {
     id: string;
     name: string;
     street: string;
+    postalCode: string;
     city: string;
+    phone?: string | null;
+    arrivalInstructions?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
   };
 }
 
@@ -142,9 +172,15 @@ function rideRowToEntity(row: RideRow): Ride {
     arrivalTime: row.arrival_time,
     returnTime: row.return_time,
     status: row.status,
+    substatus: row.substatus,
     recurrenceGroup: row.recurrence_group,
     estimatedDuration: row.estimated_duration,
     estimatedDistance: row.estimated_distance,
+    // Execution timestamps
+    startedAt: row.started_at,
+    pickedUpAt: row.picked_up_at,
+    arrivedAt: row.arrived_at,
+    completedAt: row.completed_at,
     cancelledAt: row.cancelled_at,
     cancellationReason: row.cancellation_reason,
     notes: row.notes,
@@ -201,11 +237,15 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
     .select(`
       *,
       patient:patients!inner(
-        id, first_name, last_name, street, city, phone,
-        needs_wheelchair, needs_walker, needs_assistance
+        id, first_name, last_name, street, postal_code, city, phone,
+        needs_wheelchair, needs_walker, needs_assistance,
+        pickup_instructions, notes, latitude, longitude
       ),
       driver:drivers(id, first_name, last_name, phone),
-      destination:destinations!inner(id, name, street, city)
+      destination:destinations!inner(
+        id, name, street, postal_code, city, phone,
+        arrival_instructions, latitude, longitude
+      )
     `)
     .order('pickup_time', { ascending: true });
 
@@ -266,9 +306,15 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
       arrivalTime: row.arrival_time as string,
       returnTime: row.return_time as string | null,
       status: row.status as RideStatus,
+      substatus: (row.substatus as RideSubstatus) || null,
       recurrenceGroup: row.recurrence_group as string | null,
       estimatedDuration: row.estimated_duration as number | null,
       estimatedDistance: row.estimated_distance as number | null,
+      // Execution timestamps
+      startedAt: row.started_at as string | null,
+      pickedUpAt: row.picked_up_at as string | null,
+      arrivedAt: row.arrived_at as string | null,
+      completedAt: row.completed_at as string | null,
       cancelledAt: row.cancelled_at as string | null,
       cancellationReason: row.cancellation_reason as string | null,
       notes: row.notes as string | null,
@@ -279,11 +325,16 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
         firstName: patient.first_name as string,
         lastName: patient.last_name as string,
         street: patient.street as string,
+        postalCode: (patient.postal_code as string) || '',
         city: patient.city as string,
         phone: patient.phone as string,
         needsWheelchair: patient.needs_wheelchair as boolean,
         needsWalker: patient.needs_walker as boolean,
         needsAssistance: patient.needs_assistance as boolean,
+        pickupInstructions: patient.pickup_instructions as string | null,
+        notes: patient.notes as string | null,
+        latitude: patient.latitude as number | null,
+        longitude: patient.longitude as number | null,
       },
       driver: driver ? {
         id: driver.id as string,
@@ -295,7 +346,12 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
         id: destination.id as string,
         name: destination.name as string,
         street: destination.street as string,
+        postalCode: (destination.postal_code as string) || '',
         city: destination.city as string,
+        phone: destination.phone as string | null,
+        arrivalInstructions: destination.arrival_instructions as string | null,
+        latitude: destination.latitude as number | null,
+        longitude: destination.longitude as number | null,
       },
     };
   });
@@ -310,11 +366,15 @@ export async function getRideById(id: string): Promise<RideWithRelations | null>
     .select(`
       *,
       patient:patients!inner(
-        id, first_name, last_name, street, city, phone,
-        needs_wheelchair, needs_walker, needs_assistance
+        id, first_name, last_name, street, postal_code, city, phone,
+        needs_wheelchair, needs_walker, needs_assistance,
+        pickup_instructions, notes, latitude, longitude
       ),
       driver:drivers(id, first_name, last_name, phone),
-      destination:destinations!inner(id, name, street, city)
+      destination:destinations!inner(
+        id, name, street, postal_code, city, phone,
+        arrival_instructions, latitude, longitude
+      )
     `)
     .eq('id', validId)
     .single();
@@ -337,9 +397,14 @@ export async function getRideById(id: string): Promise<RideWithRelations | null>
     arrivalTime: data.arrival_time,
     returnTime: data.return_time,
     status: data.status,
+    substatus: data.substatus || null,
     recurrenceGroup: data.recurrence_group,
     estimatedDuration: data.estimated_duration,
     estimatedDistance: data.estimated_distance,
+    startedAt: data.started_at,
+    pickedUpAt: data.picked_up_at,
+    arrivedAt: data.arrived_at,
+    completedAt: data.completed_at,
     cancelledAt: data.cancelled_at,
     cancellationReason: data.cancellation_reason,
     notes: data.notes,
@@ -350,11 +415,16 @@ export async function getRideById(id: string): Promise<RideWithRelations | null>
       firstName: patient.first_name as string,
       lastName: patient.last_name as string,
       street: patient.street as string,
+      postalCode: (patient.postal_code as string) || '',
       city: patient.city as string,
       phone: patient.phone as string,
       needsWheelchair: patient.needs_wheelchair as boolean,
       needsWalker: patient.needs_walker as boolean,
       needsAssistance: patient.needs_assistance as boolean,
+      pickupInstructions: patient.pickup_instructions as string | null,
+      notes: patient.notes as string | null,
+      latitude: patient.latitude as number | null,
+      longitude: patient.longitude as number | null,
     },
     driver: driver ? {
       id: driver.id as string,
@@ -366,7 +436,12 @@ export async function getRideById(id: string): Promise<RideWithRelations | null>
       id: destination.id as string,
       name: destination.name as string,
       street: destination.street as string,
+      postalCode: (destination.postal_code as string) || '',
       city: destination.city as string,
+      phone: destination.phone as string | null,
+      arrivalInstructions: destination.arrival_instructions as string | null,
+      latitude: destination.latitude as number | null,
+      longitude: destination.longitude as number | null,
     },
   };
 }
