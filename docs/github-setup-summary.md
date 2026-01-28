@@ -52,15 +52,15 @@
 
 ---
 
-## Sprint 2-4 Issues (VORBEREITET)
+## Sprint 2-4 Issues (✅ ERSTELLT)
 
-Die Issues für Sprint 2-4 können erstellt werden mit:
+Alle Issues für Sprint 2-4 wurden erfolgreich erstellt mit:
 
 ```bash
-./scripts/create-sprint-2-4-issues.sh
+./scripts/create-all-sprint-issues.sh
 ```
 
-### Sprint 2: 6 geplante Issues
+### Sprint 2: 6 Issues (#25-#30) ✅
 - Story 5.2: Tages-Ansicht Kalender
 - Story 6.1: Fahrerverfügbarkeit readonly anzeigen
 - Story 6.2: Abwesenheiten readonly anzeigen
@@ -68,7 +68,7 @@ Die Issues für Sprint 2-4 können erstellt werden mit:
 - Story 8.1: Erweiterte Suche
 - Story 9.1: Ride-Detail-Ansicht mit Karte
 
-### Sprint 3: 7 geplante Issues
+### Sprint 3: 7 Issues (#31-#37) ✅
 - Story 10.1: Fahrer sieht Liste zugewiesener Fahrten
 - Story 10.2: Fahrer-Detail-Ansicht für Fahrt
 - Story 11.1: Fahrer bestätigt Fahrt
@@ -77,7 +77,7 @@ Die Issues für Sprint 2-4 können erstellt werden mit:
 - Story 13.1: Fahrer pflegt Verfügbarkeit
 - Story 13.2: Fahrer erfasst Abwesenheit
 
-### Sprint 4: 5 geplante Issues
+### Sprint 4: 5 Issues (#38-#42) ✅
 - Story 14.1: Fahrer startet Fahrt
 - Story 14.2: Fahrer schließt Fahrt ab
 - Story 14.3: Timestamps für Fahrt-Phasen speichern
