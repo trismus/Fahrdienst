@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { loadGoogleMaps } from './google-maps-loader';
 
 interface AddressAutocompleteProps {
   label?: string;
@@ -9,41 +10,6 @@ interface AddressAutocompleteProps {
   error?: string;
   placeholder?: string;
   required?: boolean;
-}
-
-
-let googleMapsPromise: Promise<void> | null = null;
-
-function loadGoogleMaps(): Promise<void> {
-  if (googleMapsPromise) return googleMapsPromise;
-
-  googleMapsPromise = new Promise((resolve, reject) => {
-    if (window.google?.maps?.places) {
-      resolve();
-      return;
-    }
-
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-    if (!apiKey) {
-      reject(new Error('Google Maps API key not configured'));
-      return;
-    }
-
-    const win = window as Window & { initGoogleMapsCallback?: () => void };
-    win.initGoogleMapsCallback = () => {
-      resolve();
-      delete win.initGoogleMapsCallback;
-    };
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMapsCallback`;
-    script.async = true;
-    script.defer = true;
-    script.onerror = () => reject(new Error('Failed to load Google Maps'));
-    document.head.appendChild(script);
-  });
-
-  return googleMapsPromise;
 }
 
 export function AddressAutocomplete({

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Card, CardHeader, CardTitle, Badge } from '@/components/ui';
+import { RoutePreview } from '@/components/maps';
 import { createRide, updateRide, cancelRide, type CreateRideInput } from '@/lib/actions/rides-v2';
 import { getDriversWithAvailability, type DriverWithAvailability } from '@/lib/actions/drivers-v2';
 import type { Patient, Destination } from '@/types/database';
@@ -24,6 +25,101 @@ interface RouteInfo {
   distance: number; // kilometers
   loading: boolean;
   error: string | null;
+}
+
+// =============================================================================
+// ROUTE PREVIEW SECTION
+// =============================================================================
+
+interface RoutePreviewSectionProps {
+  patients: Patient[];
+  destinations: Destination[];
+  patientId: string;
+  destinationId: string;
+  routeInfo: RouteInfo;
+  onRouteCalculated: (info: { distanceKm: number; durationMinutes: number }) => void;
+}
+
+function RoutePreviewSection({
+  patients,
+  destinations,
+  patientId,
+  destinationId,
+  routeInfo,
+  onRouteCalculated,
+}: RoutePreviewSectionProps) {
+  // Find selected patient and destination
+  const selectedPatient = useMemo(
+    () => patients.find((p) => p.id === patientId),
+    [patients, patientId]
+  );
+
+  const selectedDestination = useMemo(
+    () => destinations.find((d) => d.id === destinationId),
+    [destinations, destinationId]
+  );
+
+  // Check if we have valid coordinates
+  const hasValidCoordinates = useMemo(() => {
+    return (
+      selectedPatient?.latitude != null &&
+      selectedPatient?.longitude != null &&
+      selectedDestination?.latitude != null &&
+      selectedDestination?.longitude != null
+    );
+  }, [selectedPatient, selectedDestination]);
+
+  // Show nothing if no patient or destination selected
+  if (!patientId || !destinationId) {
+    return null;
+  }
+
+  // Show error if coordinates are missing
+  if (!hasValidCoordinates) {
+    return (
+      <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+        <p className="text-sm text-yellow-700 dark:text-yellow-400">
+          Koordinaten fehlen fuer Routenberechnung. Bitte pruefen Sie die Adressen von Patient und Ziel.
+        </p>
+      </div>
+    );
+  }
+
+  // Show route info while map loads (from API calculation)
+  const showRouteInfoFallback = routeInfo.loading || (routeInfo.duration > 0 && !routeInfo.error);
+
+  return (
+    <div className="space-y-3">
+      {/* Route Map Preview */}
+      <RoutePreview
+        patientCoordinates={{
+          lat: selectedPatient?.latitude,
+          lng: selectedPatient?.longitude,
+          label: selectedPatient ? `${selectedPatient.firstName} ${selectedPatient.lastName}` : undefined,
+        }}
+        destinationCoordinates={{
+          lat: selectedDestination?.latitude,
+          lng: selectedDestination?.longitude,
+          label: selectedDestination?.name,
+        }}
+        onRouteCalculated={onRouteCalculated}
+      />
+
+      {/* Route Info Fallback (when map hasn't loaded yet) */}
+      {showRouteInfoFallback && routeInfo.loading && (
+        <div className="p-4 bg-accent-50 dark:bg-accent-900/20 border border-accent-200 dark:border-accent-800 rounded-xl">
+          <p className="text-sm text-accent-700 dark:text-accent-400">Route wird berechnet...</p>
+        </div>
+      )}
+
+      {/* Route Error */}
+      {routeInfo.error && (
+        <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
+          <p className="text-sm text-yellow-700 dark:text-yellow-400">{routeInfo.error}</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // =============================================================================
@@ -103,75 +199,40 @@ export function RideFormV2({ ride, patients, destinations, mode = 'create' }: Ri
   }, [formData.pickupTime, loadDriverAvailability]);
 
   // =============================================================================
-  // ROUTE CALCULATION
+  // ROUTE CALCULATION HANDLER
   // =============================================================================
 
-  const calculateRoute = useCallback(async () => {
-    const patient = patients.find((p) => p.id === formData.patientId);
-    const destination = destinations.find((d) => d.id === formData.destinationId);
+  // Handle route calculation result from RoutePreview
+  const handleRouteCalculated = useCallback((info: { distanceKm: number; durationMinutes: number }) => {
+    setRouteInfo({
+      duration: info.durationMinutes,
+      distance: info.distanceKm,
+      loading: false,
+      error: null,
+    });
 
-    if (!patient || !destination) {
-      return;
-    }
-
-    // Check if coordinates are available
-    if (!patient.latitude || !patient.longitude || !destination.latitude || !destination.longitude) {
-      setRouteInfo((prev) => ({
+    // Auto-calculate arrival time if pickup time is set and no arrival time yet
+    if (formData.pickupTime && !formData.arrivalTime) {
+      const pickupDate = new Date(formData.pickupTime);
+      // Add route duration + 5 min buffer
+      const arrivalDate = new Date(pickupDate.getTime() + (info.durationMinutes * 60 * 1000) + (5 * 60 * 1000));
+      setFormData((prev) => ({
         ...prev,
-        error: 'Koordinaten fehlen fuer Routenberechnung',
-      }));
-      return;
-    }
-
-    setRouteInfo((prev) => ({ ...prev, loading: true, error: null }));
-
-    try {
-      const response = await fetch('/api/routes/calculate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          origin: { lat: patient.latitude, lng: patient.longitude },
-          destination: { lat: destination.latitude, lng: destination.longitude },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Routenberechnung fehlgeschlagen');
-      }
-
-      const data = await response.json();
-
-      setRouteInfo({
-        duration: Math.round(data.duration / 60), // Convert seconds to minutes
-        distance: Math.round(data.distance / 1000 * 10) / 10, // Convert meters to km
-        loading: false,
-        error: null,
-      });
-
-      // Auto-calculate arrival time if pickup time is set
-      if (formData.pickupTime && data.duration) {
-        const pickupDate = new Date(formData.pickupTime);
-        const arrivalDate = new Date(pickupDate.getTime() + (data.duration * 1000) + (5 * 60 * 1000)); // Add 5 min buffer
-        setFormData((prev) => ({
-          ...prev,
-          arrivalTime: arrivalDate.toISOString().slice(0, 16),
-        }));
-      }
-    } catch (err) {
-      setRouteInfo((prev) => ({
-        ...prev,
-        loading: false,
-        error: err instanceof Error ? err.message : 'Routenberechnung fehlgeschlagen',
+        arrivalTime: arrivalDate.toISOString().slice(0, 16),
       }));
     }
-  }, [formData.patientId, formData.destinationId, formData.pickupTime, patients, destinations]);
+  }, [formData.pickupTime, formData.arrivalTime]);
 
-  // Calculate route when patient or destination changes
+  // Reset route info when patient or destination changes
   useEffect(() => {
     if (formData.patientId && formData.destinationId) {
-      calculateRoute();
+      // Mark as loading while RoutePreview calculates
+      setRouteInfo((prev) => ({ ...prev, loading: true, error: null }));
+    } else {
+      // Reset if either is not selected
+      setRouteInfo({ duration: 0, distance: 0, loading: false, error: null });
     }
-  }, [formData.patientId, formData.destinationId, calculateRoute]);
+  }, [formData.patientId, formData.destinationId]);
 
   // =============================================================================
   // FORM HANDLERS
@@ -356,35 +417,15 @@ export function RideFormV2({ ride, patients, destinations, mode = 'create' }: Ri
           </select>
         </div>
 
-        {/* Route Info */}
-        {(routeInfo.duration > 0 || routeInfo.loading) && (
-          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
-            {routeInfo.loading ? (
-              <p className="text-sm text-blue-700 dark:text-blue-400">Route wird berechnet...</p>
-            ) : (
-              <div className="flex gap-6">
-                <div>
-                  <span className="text-sm text-blue-600 dark:text-blue-400">Dauer:</span>
-                  <span className="ml-2 font-medium text-blue-800 dark:text-blue-300">
-                    {routeInfo.duration} Min.
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-blue-600 dark:text-blue-400">Distanz:</span>
-                  <span className="ml-2 font-medium text-blue-800 dark:text-blue-300">
-                    {routeInfo.distance} km
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {routeInfo.error && (
-          <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
-            <p className="text-sm text-yellow-700 dark:text-yellow-400">{routeInfo.error}</p>
-          </div>
-        )}
+        {/* Route Preview Map */}
+        <RoutePreviewSection
+          patients={patients}
+          destinations={destinations}
+          patientId={formData.patientId}
+          destinationId={formData.destinationId}
+          routeInfo={routeInfo}
+          onRouteCalculated={handleRouteCalculated}
+        />
 
         {/* Time Fields */}
         <div className="grid grid-cols-2 gap-4">
