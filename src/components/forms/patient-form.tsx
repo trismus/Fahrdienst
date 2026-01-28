@@ -36,8 +36,6 @@ export function PatientForm({ patient }: PatientFormProps) {
     needsAssistance: patient?.needsAssistance || false,
     emergencyContactName: patient?.emergencyContactName || '',
     emergencyContactPhone: patient?.emergencyContactPhone || '',
-    insurance: patient?.insurance || '',
-    costCenter: patient?.costCenter || '',
     notes: patient?.notes || '',
   });
 
@@ -283,27 +281,6 @@ export function PatientForm({ patient }: PatientFormProps) {
               value={formData.emergencyContactPhone || ''}
               onChange={handleChange}
               placeholder="+41 79 234 56 78"
-            />
-          </div>
-        </div>
-
-        {/* Insurance */}
-        <div className="space-y-4">
-          <h3 className="font-medium text-gray-900 border-b pb-2">Versicherung</h3>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Krankenkasse"
-              name="insurance"
-              value={formData.insurance || ''}
-              onChange={handleChange}
-              placeholder="z.B. Helsana, CSS, Swica"
-            />
-            <Input
-              label="Kostenstelle"
-              name="costCenter"
-              value={formData.costCenter || ''}
-              onChange={handleChange}
             />
           </div>
         </div>

@@ -164,8 +164,6 @@ export async function updatePatient(id: string, input: ZodUpdatePatientInput): P
   if (validatedInput.needsAssistance !== undefined) row.needs_assistance = validatedInput.needsAssistance;
   if (validatedInput.emergencyContactName !== undefined) row.emergency_contact_name = validatedInput.emergencyContactName;
   if (validatedInput.emergencyContactPhone !== undefined) row.emergency_contact_phone = validatedInput.emergencyContactPhone;
-  if (validatedInput.insurance !== undefined) row.insurance = validatedInput.insurance;
-  if (validatedInput.costCenter !== undefined) row.cost_center = validatedInput.costCenter;
   if (validatedInput.notes !== undefined) row.notes = validatedInput.notes;
   if (validatedInput.isActive !== undefined) row.is_active = validatedInput.isActive;
 

@@ -51,8 +51,6 @@ export interface Patient {
   needsAssistance: boolean;
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
-  insurance: string | null;
-  costCenter: string | null;
   notes: string | null;
   isActive: boolean;
   createdAt: string;
@@ -79,8 +77,6 @@ export interface PatientRow {
   needs_assistance: boolean;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
-  insurance: string | null;
-  cost_center: string | null;
   notes: string | null;
   is_active: boolean;
   created_at: string;
@@ -106,8 +102,6 @@ export interface CreatePatientInput {
   needsAssistance?: boolean;
   emergencyContactName?: string;
   emergencyContactPhone?: string;
-  insurance?: string;
-  costCenter?: string;
   notes?: string;
 }
 
@@ -274,8 +268,6 @@ export function patientRowToEntity(row: PatientRow): Patient {
     needsAssistance: row.needs_assistance,
     emergencyContactName: row.emergency_contact_name,
     emergencyContactPhone: row.emergency_contact_phone,
-    insurance: row.insurance,
-    costCenter: row.cost_center,
     notes: row.notes,
     isActive: row.is_active,
     createdAt: row.created_at,
@@ -353,8 +345,6 @@ export function patientInputToRow(input: CreatePatientInput): Partial<PatientRow
     needs_assistance: input.needsAssistance ?? false,
     emergency_contact_name: input.emergencyContactName,
     emergency_contact_phone: input.emergencyContactPhone,
-    insurance: input.insurance,
-    cost_center: input.costCenter,
     notes: input.notes,
   };
 }

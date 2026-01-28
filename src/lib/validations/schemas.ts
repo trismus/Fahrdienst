@@ -96,8 +96,6 @@ export const createPatientSchema = z.object({
     (val) => (val === '' || val === null || val === undefined ? null : val),
     swissPhone.optional().nullable()
   ),
-  insurance: sanitizedString(100).optional().nullable(),
-  costCenter: sanitizedString(50).optional().nullable(),
   notes: sanitizedString(1000).optional().nullable(),
 });
 
