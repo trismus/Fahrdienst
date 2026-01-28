@@ -9,14 +9,7 @@ interface RouteMapProps {
   className?: string;
 }
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const google: any;
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    google?: any;
-  }
-}
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 let googleMapsPromise: Promise<void> | null = null;
 
