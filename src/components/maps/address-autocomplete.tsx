@@ -11,7 +11,6 @@ interface AddressAutocompleteProps {
   required?: boolean;
 }
 
-import '@/types/google-maps.d';
 
 let googleMapsPromise: Promise<void> | null = null;
 
@@ -30,9 +29,10 @@ function loadGoogleMaps(): Promise<void> {
       return;
     }
 
-    window.initGoogleMapsCallback = () => {
+    const win = window as Window & { initGoogleMapsCallback?: () => void };
+    win.initGoogleMapsCallback = () => {
       resolve();
-      delete window.initGoogleMapsCallback;
+      delete win.initGoogleMapsCallback;
     };
 
     const script = document.createElement('script');
