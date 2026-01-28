@@ -9,7 +9,6 @@ interface RouteMapProps {
   className?: string;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 let googleMapsPromise: Promise<void> | null = null;
 

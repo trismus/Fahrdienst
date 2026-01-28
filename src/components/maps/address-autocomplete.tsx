@@ -11,7 +11,7 @@ interface AddressAutocompleteProps {
   required?: boolean;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+import '@/types/google-maps.d';
 
 let googleMapsPromise: Promise<void> | null = null;
 
