@@ -15,7 +15,7 @@ export default function Home() {
           Dispatcher Login
         </Link>
         <Link
-          href="/rides"
+          href="/my-rides"
           className="px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
         >
           Fahrer Login

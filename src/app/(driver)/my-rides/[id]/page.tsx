@@ -44,7 +44,7 @@ export default async function DriverRideDetailPage({ params }: DriverRideDetailP
   return (
     <div>
       <div className="mb-4">
-        <Link href="/rides">
+        <Link href="/my-rides">
           <Button variant="ghost" size="sm">
             ← Zurück zur Übersicht
           </Button>

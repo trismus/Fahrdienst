@@ -13,13 +13,13 @@ export default function DriverLayout({
           <h2 className="text-xl font-bold">Fahrdienst</h2>
           <nav className="flex gap-4">
             <Link
-              href="/rides"
+              href="/my-rides"
               className="px-3 py-1 rounded hover:bg-gray-800 transition-colors"
             >
               Fahrten
             </Link>
             <Link
-              href="/availability"
+              href="/my-availability"
               className="px-3 py-1 rounded hover:bg-gray-800 transition-colors"
             >
               Verfügbarkeit

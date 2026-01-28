@@ -58,7 +58,7 @@ export default async function DriverRidesPage() {
           <h2 className="text-lg font-semibold mb-3 text-orange-600">
             Ausstehende Bestätigungen ({pendingRides.length})
           </h2>
-          <RideList rides={pendingRides} linkPrefix="/rides" />
+          <RideList rides={pendingRides} linkPrefix="/my-rides" />
         </div>
       )}
 
@@ -68,7 +68,7 @@ export default async function DriverRidesPage() {
         <RideList
           rides={todaysRides}
           emptyMessage="Keine Fahrten für heute"
-          linkPrefix="/rides"
+          linkPrefix="/my-rides"
         />
       </div>
 
@@ -76,7 +76,7 @@ export default async function DriverRidesPage() {
       {upcomingRides.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-3">Kommende Fahrten</h2>
-          <RideList rides={upcomingRides} linkPrefix="/rides" />
+          <RideList rides={upcomingRides} linkPrefix="/my-rides" />
         </div>
       )}
     </div>
