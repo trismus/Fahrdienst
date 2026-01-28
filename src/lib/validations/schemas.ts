@@ -19,12 +19,21 @@ const sanitizedString = (maxLength: number = 255) =>
       message: 'HTML tags are not allowed',
     });
 
-// Swiss phone number format
+// Swiss phone number format - flexible to accept common formats
 const swissPhone = z
   .string()
-  .regex(/^\+41\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2}$/, {
-    message: 'Invalid Swiss phone format. Expected: +41 XX XXX XX XX',
-  });
+  .transform((val) => val.trim().replace(/\s+/g, ' ')) // normalize spaces
+  .refine(
+    (val) => {
+      // Remove all spaces for validation
+      const cleaned = val.replace(/\s/g, '');
+      // Accept: +41XXXXXXXXX or 0XXXXXXXXX (9-10 digits after prefix)
+      return /^(\+41\d{9,10}|0\d{9})$/.test(cleaned);
+    },
+    {
+      message: 'Ungültiges Schweizer Telefonnummer-Format. Erwartet: +41 XX XXX XX XX oder 0XX XXX XX XX',
+    }
+  );
 
 // Swiss postal code
 const swissPostalCode = z
@@ -83,7 +92,10 @@ export const createPatientSchema = z.object({
   needsWalker: z.boolean().default(false),
   needsAssistance: z.boolean().default(false),
   emergencyContactName: sanitizedString(200).optional().nullable(),
-  emergencyContactPhone: swissPhone.optional().nullable(),
+  emergencyContactPhone: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    swissPhone.optional().nullable()
+  ),
   insurance: sanitizedString(100).optional().nullable(),
   costCenter: sanitizedString(50).optional().nullable(),
   notes: sanitizedString(1000).optional().nullable(),
@@ -148,7 +160,10 @@ export const createDestinationSchema = z.object({
   country: z.string().length(2).default('CH'),
   latitude: latitude,
   longitude: longitude,
-  phone: swissPhone.optional().nullable(),
+  phone: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    swissPhone.optional().nullable()
+  ),
   email: email,
   openingHours: sanitizedString(200).optional().nullable(),
   arrivalInstructions: sanitizedString(500).optional().nullable(),
