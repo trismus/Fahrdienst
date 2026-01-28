@@ -11,6 +11,7 @@ import {
   destinationRowToEntity,
   destinationInputToRow,
 } from '@/types/database';
+import { sanitizeSearchQuery, validateId } from '@/lib/utils/sanitize';
 
 // =============================================================================
 // READ OPERATIONS
@@ -38,10 +39,13 @@ export async function getDestinations(includeInactive = false): Promise<Destinat
 export async function getDestinationById(id: string): Promise<Destination | null> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'destination');
+
   const { data, error } = await supabase
     .from('destinations')
     .select('*')
-    .eq('id', id)
+    .eq('id', validId)
     .single();
 
   if (error) {
@@ -70,11 +74,18 @@ export async function getDestinationsByType(type: DestinationType): Promise<Dest
 export async function searchDestinations(query: string): Promise<Destination[]> {
   const supabase = await createClient();
 
+  // Sanitize input to prevent SQL injection
+  const sanitized = sanitizeSearchQuery(query);
+
+  if (!sanitized) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('destinations')
     .select('*')
     .eq('is_active', true)
-    .or(`name.ilike.%${query}%,department.ilike.%${query}%,city.ilike.%${query}%`)
+    .or(`name.ilike.%${sanitized}%,department.ilike.%${sanitized}%,city.ilike.%${sanitized}%`)
     .order('name')
     .limit(20);
 
@@ -111,6 +122,9 @@ export async function createDestination(input: CreateDestinationInput): Promise<
 export async function updateDestination(id: string, input: UpdateDestinationInput): Promise<Destination> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'destination');
+
   const row: Partial<DestinationRow> = {};
 
   if (input.externalId !== undefined) row.external_id = input.externalId;
@@ -133,14 +147,14 @@ export async function updateDestination(id: string, input: UpdateDestinationInpu
   const { data, error } = await supabase
     .from('destinations')
     .update(row)
-    .eq('id', id)
+    .eq('id', validId)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to update destination: ${error.message}`);
 
   revalidatePath('/destinations');
-  revalidatePath(`/destinations/${id}`);
+  revalidatePath(`/destinations/${validId}`);
   return destinationRowToEntity(data as DestinationRow);
 }
 
@@ -151,10 +165,13 @@ export async function updateDestination(id: string, input: UpdateDestinationInpu
 export async function deactivateDestination(id: string): Promise<void> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'destination');
+
   const { error } = await supabase
     .from('destinations')
     .update({ is_active: false })
-    .eq('id', id);
+    .eq('id', validId);
 
   if (error) throw new Error(`Failed to deactivate destination: ${error.message}`);
 
@@ -164,10 +181,13 @@ export async function deactivateDestination(id: string): Promise<void> {
 export async function reactivateDestination(id: string): Promise<void> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'destination');
+
   const { error } = await supabase
     .from('destinations')
     .update({ is_active: true })
-    .eq('id', id);
+    .eq('id', validId);
 
   if (error) throw new Error(`Failed to reactivate destination: ${error.message}`);
 

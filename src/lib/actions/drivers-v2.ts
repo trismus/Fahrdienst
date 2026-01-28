@@ -10,6 +10,7 @@ import {
   driverRowToEntity,
   driverInputToRow,
 } from '@/types/database';
+import { sanitizeSearchQuery, validateId } from '@/lib/utils/sanitize';
 
 // =============================================================================
 // READ OPERATIONS
@@ -38,10 +39,13 @@ export async function getDrivers(includeInactive = false): Promise<Driver[]> {
 export async function getDriverById(id: string): Promise<Driver | null> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'driver');
+
   const { data, error } = await supabase
     .from('drivers')
     .select('*')
-    .eq('id', id)
+    .eq('id', validId)
     .single();
 
   if (error) {
@@ -55,10 +59,13 @@ export async function getDriverById(id: string): Promise<Driver | null> {
 export async function getDriverByUserId(userId: string): Promise<Driver | null> {
   const supabase = await createClient();
 
+  // Validate user ID format to prevent injection
+  const validUserId = validateId(userId, 'user');
+
   const { data, error } = await supabase
     .from('drivers')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', validUserId)
     .eq('is_active', true)
     .single();
 
@@ -73,11 +80,18 @@ export async function getDriverByUserId(userId: string): Promise<Driver | null> 
 export async function searchDrivers(query: string): Promise<Driver[]> {
   const supabase = await createClient();
 
+  // Sanitize input to prevent SQL injection
+  const sanitized = sanitizeSearchQuery(query);
+
+  if (!sanitized) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('drivers')
     .select('*')
     .eq('is_active', true)
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,driver_code.ilike.%${query}%`)
+    .or(`first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%,driver_code.ilike.%${sanitized}%`)
     .order('last_name')
     .limit(20);
 
@@ -114,6 +128,9 @@ export async function createDriver(input: CreateDriverInput): Promise<Driver> {
 export async function updateDriver(id: string, input: UpdateDriverInput): Promise<Driver> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'driver');
+
   const row: Partial<DriverRow> = {};
 
   if (input.userId !== undefined) row.user_id = input.userId;
@@ -134,14 +151,14 @@ export async function updateDriver(id: string, input: UpdateDriverInput): Promis
   const { data, error } = await supabase
     .from('drivers')
     .update(row)
-    .eq('id', id)
+    .eq('id', validId)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to update driver: ${error.message}`);
 
   revalidatePath('/drivers');
-  revalidatePath(`/drivers/${id}`);
+  revalidatePath(`/drivers/${validId}`);
   return driverRowToEntity(data as DriverRow);
 }
 
@@ -152,10 +169,13 @@ export async function updateDriver(id: string, input: UpdateDriverInput): Promis
 export async function deactivateDriver(id: string): Promise<void> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'driver');
+
   const { error } = await supabase
     .from('drivers')
     .update({ is_active: false })
-    .eq('id', id);
+    .eq('id', validId);
 
   if (error) throw new Error(`Failed to deactivate driver: ${error.message}`);
 
@@ -165,10 +185,13 @@ export async function deactivateDriver(id: string): Promise<void> {
 export async function reactivateDriver(id: string): Promise<void> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'driver');
+
   const { error } = await supabase
     .from('drivers')
     .update({ is_active: true })
-    .eq('id', id);
+    .eq('id', validId);
 
   if (error) throw new Error(`Failed to reactivate driver: ${error.message}`);
 

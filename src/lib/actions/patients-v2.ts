@@ -10,6 +10,7 @@ import {
   patientRowToEntity,
   patientInputToRow,
 } from '@/types/database';
+import { sanitizeSearchQuery, validateId } from '@/lib/utils/sanitize';
 
 // =============================================================================
 // READ OPERATIONS
@@ -38,10 +39,13 @@ export async function getPatients(includeInactive = false): Promise<Patient[]> {
 export async function getPatientById(id: string): Promise<Patient | null> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'patient');
+
   const { data, error } = await supabase
     .from('patients')
     .select('*')
-    .eq('id', id)
+    .eq('id', validId)
     .single();
 
   if (error) {
@@ -55,11 +59,18 @@ export async function getPatientById(id: string): Promise<Patient | null> {
 export async function searchPatients(query: string): Promise<Patient[]> {
   const supabase = await createClient();
 
+  // Sanitize input to prevent SQL injection
+  const sanitized = sanitizeSearchQuery(query);
+
+  if (!sanitized) {
+    return [];
+  }
+
   const { data, error } = await supabase
     .from('patients')
     .select('*')
     .eq('is_active', true)
-    .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,patient_number.ilike.%${query}%`)
+    .or(`first_name.ilike.%${sanitized}%,last_name.ilike.%${sanitized}%,patient_number.ilike.%${sanitized}%`)
     .order('last_name')
     .limit(20);
 
@@ -96,6 +107,9 @@ export async function createPatient(input: CreatePatientInput): Promise<Patient>
 export async function updatePatient(id: string, input: UpdatePatientInput): Promise<Patient> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'patient');
+
   const row: Partial<PatientRow> = {};
 
   if (input.patientNumber !== undefined) row.patient_number = input.patientNumber;
@@ -124,14 +138,14 @@ export async function updatePatient(id: string, input: UpdatePatientInput): Prom
   const { data, error } = await supabase
     .from('patients')
     .update(row)
-    .eq('id', id)
+    .eq('id', validId)
     .select()
     .single();
 
   if (error) throw new Error(`Failed to update patient: ${error.message}`);
 
   revalidatePath('/patients');
-  revalidatePath(`/patients/${id}`);
+  revalidatePath(`/patients/${validId}`);
   return patientRowToEntity(data as PatientRow);
 }
 
@@ -142,10 +156,13 @@ export async function updatePatient(id: string, input: UpdatePatientInput): Prom
 export async function deactivatePatient(id: string): Promise<void> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'patient');
+
   const { error } = await supabase
     .from('patients')
     .update({ is_active: false })
-    .eq('id', id);
+    .eq('id', validId);
 
   if (error) throw new Error(`Failed to deactivate patient: ${error.message}`);
 
@@ -155,10 +172,13 @@ export async function deactivatePatient(id: string): Promise<void> {
 export async function reactivatePatient(id: string): Promise<void> {
   const supabase = await createClient();
 
+  // Validate ID format to prevent injection
+  const validId = validateId(id, 'patient');
+
   const { error } = await supabase
     .from('patients')
     .update({ is_active: true })
-    .eq('id', id);
+    .eq('id', validId);
 
   if (error) throw new Error(`Failed to reactivate patient: ${error.message}`);
 
