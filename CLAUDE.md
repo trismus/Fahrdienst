@@ -131,9 +131,24 @@ Tailwind configuration uses an Uber-inspired minimal design system:
 
 See `tailwind.config.ts` for complete configuration.
 
-## Key Documentation
+## Product Documentation
 
-- `docs/blueprint.md` - Complete project specification (German)
+**Start here**: `/docs/README.md` - Complete documentation index and navigation guide
+
+### Essential Documents (Read in order)
+1. **`docs/workflow-canvas.md`** ⭐ - 10 core workflows with acceptance criteria, edge cases, MVP scope (VERBINDLICH)
+2. **`docs/sprint-backlog.md`** - Detailed user stories with technical implementation (Sprint 1-6)
+3. **`docs/roadmap.md`** - Releases, milestones, decision log
+4. **`docs/test-plan.md`** - Test scenarios, security tests, performance tests
+5. **`docs/sprint-1-overview.md`** - Quick reference for current sprint
+6. **`docs/executive-summary.md`** - Project goals, budget, timeline (for stakeholders)
+7. **`docs/blueprint.md`** - Original technical specification (German)
+
+### Product Decisions (documented in Workflow Canvas)
+- **Status Flow**: 4 states (planned → confirmed → in_progress → completed/cancelled)
+- **Disposition Mode**: Manual assignment with availability check (no auto-assignment in MVP)
+- **Return Rides**: Stored as separate ride entries (linked via recurrence_group)
+- **Notifications**: Sprint 2 (not Sprint 1) - phone coordination acceptable initially
 
 ## Security
 

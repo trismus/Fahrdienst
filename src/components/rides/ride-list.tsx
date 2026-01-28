@@ -38,9 +38,14 @@ function isToday(isoString: string) {
 export function RideList({ rides, emptyMessage = 'Keine Fahrten', linkPrefix = '/rides' }: RideListProps) {
   if (rides.length === 0) {
     return (
-      <Card>
-        <p className="text-center text-gray-500 py-8">{emptyMessage}</p>
-      </Card>
+      <div className="flex flex-col items-center justify-center py-16 px-4">
+        <div className="w-16 h-16 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-neutral-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+        </div>
+        <p className="text-neutral-500 dark:text-neutral-400 font-medium">{emptyMessage}</p>
+      </div>
     );
   }
 
@@ -55,7 +60,7 @@ export function RideList({ rides, emptyMessage = 'Keine Fahrten', linkPrefix = '
   }, {} as Record<string, RideWithRelations[]>);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-8">
       {Object.entries(groupedRides).map(([dateString, dateRides]) => {
         const dateLabel = isToday(dateRides[0].pickup_time)
           ? 'Heute'
@@ -63,28 +68,33 @@ export function RideList({ rides, emptyMessage = 'Keine Fahrten', linkPrefix = '
 
         return (
           <div key={dateString}>
-            <h3 className="text-sm font-medium text-gray-500 mb-2">{dateLabel}</h3>
-            <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide mb-4">{dateLabel}</h3>
+            <div className="space-y-3">
               {dateRides.map((ride) => (
                 <Link key={ride.id} href={`${linkPrefix}/${ride.id}`}>
-                  <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="text-lg font-bold text-blue-600">
-                          {formatTime(ride.pickup_time)}
+                  <Card hover padding="none" className="overflow-hidden">
+                    <div className="flex items-center p-5">
+                      <div className="flex items-center gap-5 flex-1 min-w-0">
+                        <div className="flex flex-col items-center justify-center min-w-[64px]">
+                          <div className="text-2xl font-bold text-primary tabular-nums">
+                            {formatTime(ride.pickup_time)}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium">{ride.patient?.name}</p>
-                          <p className="text-sm text-gray-500">
+                        <div className="h-12 w-px bg-neutral-200 dark:bg-neutral-700"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-neutral-900 dark:text-neutral-100 text-base truncate">
+                            {ride.patient?.name}
+                          </p>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
                             → {ride.destination?.name}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-4 ml-4">
                         {ride.patient?.special_needs && (
-                          <span className="text-orange-500" title={ride.patient.special_needs}>
-                            ⚠️
-                          </span>
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-warning-light" title={ride.patient.special_needs}>
+                            <span className="text-warning-dark text-lg">⚠️</span>
+                          </div>
                         )}
                         <StatusBadge status={ride.status} />
                       </div>

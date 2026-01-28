@@ -2,10 +2,11 @@ import { HTMLAttributes, forwardRef } from 'react';
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  hover?: boolean;
 }
 
 export const Card = forwardRef<HTMLDivElement, CardProps>(
-  ({ className = '', padding = 'md', children, ...props }, ref) => {
+  ({ className = '', padding = 'md', hover = false, children, ...props }, ref) => {
     const paddings = {
       none: '',
       sm: 'p-4',
@@ -13,12 +14,17 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
       lg: 'p-8',
     };
 
+    const hoverStyles = hover
+      ? 'transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 cursor-pointer'
+      : '';
+
     return (
       <div
         ref={ref}
         className={`
-          bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700
+          bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200/60 dark:border-neutral-800
           ${paddings[padding]}
+          ${hoverStyles}
           ${className}
         `}
         {...props}
@@ -38,7 +44,7 @@ export const CardHeader = forwardRef<HTMLDivElement, CardHeaderProps>(
     return (
       <div
         ref={ref}
-        className={`flex items-center justify-between mb-4 ${className}`}
+        className={`flex items-center justify-between mb-6 ${className}`}
         {...props}
       >
         {children}
@@ -56,7 +62,7 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
     return (
       <h3
         ref={ref}
-        className={`text-lg font-semibold text-gray-900 dark:text-gray-100 ${className}`}
+        className={`text-xl font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight ${className}`}
         {...props}
       >
         {children}
