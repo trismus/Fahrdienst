@@ -5,12 +5,19 @@ import { createClient } from '@/lib/supabase/server';
 import {
   Patient,
   PatientRow,
-  CreatePatientInput,
-  UpdatePatientInput,
   patientRowToEntity,
   patientInputToRow,
 } from '@/types/database';
 import { sanitizeSearchQuery, validateId } from '@/lib/utils/sanitize';
+import {
+  createPatientSchema,
+  updatePatientSchema,
+  validate,
+  type CreatePatientInput,
+  type UpdatePatientInput,
+} from '@/lib/validations/schemas';
+import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from '@/lib/utils/rate-limit';
+import { createClient as createAuthClient } from '@/lib/supabase/server';
 
 // =============================================================================
 // READ OPERATIONS
@@ -59,6 +66,15 @@ export async function getPatientById(id: string): Promise<Patient | null> {
 export async function searchPatients(query: string): Promise<Patient[]> {
   const supabase = await createClient();
 
+  // Rate limiting: get user ID for rate limit key
+  const { data: { user } } = await supabase.auth.getUser();
+  const rateLimitKey = createRateLimitKey(user?.id || null, 'search:patients');
+  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.search);
+
+  if (!rateLimitResult.success) {
+    throw new RateLimitError(rateLimitResult.resetTime);
+  }
+
   // Sanitize input to prevent SQL injection
   const sanitized = sanitizeSearchQuery(query);
 
@@ -86,7 +102,9 @@ export async function searchPatients(query: string): Promise<Patient[]> {
 export async function createPatient(input: CreatePatientInput): Promise<Patient> {
   const supabase = await createClient();
 
-  const row = patientInputToRow(input);
+  // Validate input to prevent XSS and ensure data integrity
+  const validatedInput = validate(createPatientSchema, input);
+  const row = patientInputToRow(validatedInput);
 
   const { data, error } = await supabase
     .from('patients')
@@ -110,30 +128,33 @@ export async function updatePatient(id: string, input: UpdatePatientInput): Prom
   // Validate ID format to prevent injection
   const validId = validateId(id, 'patient');
 
+  // Validate input to prevent XSS and ensure data integrity
+  const validatedInput = validate(updatePatientSchema, input);
+
   const row: Partial<PatientRow> = {};
 
-  if (input.patientNumber !== undefined) row.patient_number = input.patientNumber;
-  if (input.firstName !== undefined) row.first_name = input.firstName;
-  if (input.lastName !== undefined) row.last_name = input.lastName;
-  if (input.dateOfBirth !== undefined) row.date_of_birth = input.dateOfBirth;
-  if (input.phone !== undefined) row.phone = input.phone;
-  if (input.email !== undefined) row.email = input.email;
-  if (input.street !== undefined) row.street = input.street;
-  if (input.postalCode !== undefined) row.postal_code = input.postalCode;
-  if (input.city !== undefined) row.city = input.city;
-  if (input.country !== undefined) row.country = input.country;
-  if (input.latitude !== undefined) row.latitude = input.latitude;
-  if (input.longitude !== undefined) row.longitude = input.longitude;
-  if (input.pickupInstructions !== undefined) row.pickup_instructions = input.pickupInstructions;
-  if (input.needsWheelchair !== undefined) row.needs_wheelchair = input.needsWheelchair;
-  if (input.needsWalker !== undefined) row.needs_walker = input.needsWalker;
-  if (input.needsAssistance !== undefined) row.needs_assistance = input.needsAssistance;
-  if (input.emergencyContactName !== undefined) row.emergency_contact_name = input.emergencyContactName;
-  if (input.emergencyContactPhone !== undefined) row.emergency_contact_phone = input.emergencyContactPhone;
-  if (input.insurance !== undefined) row.insurance = input.insurance;
-  if (input.costCenter !== undefined) row.cost_center = input.costCenter;
-  if (input.notes !== undefined) row.notes = input.notes;
-  if (input.isActive !== undefined) row.is_active = input.isActive;
+  if (validatedInput.patientNumber !== undefined) row.patient_number = validatedInput.patientNumber;
+  if (validatedInput.firstName !== undefined) row.first_name = validatedInput.firstName;
+  if (validatedInput.lastName !== undefined) row.last_name = validatedInput.lastName;
+  if (validatedInput.dateOfBirth !== undefined) row.date_of_birth = validatedInput.dateOfBirth;
+  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone;
+  if (validatedInput.email !== undefined) row.email = validatedInput.email;
+  if (validatedInput.street !== undefined) row.street = validatedInput.street;
+  if (validatedInput.postalCode !== undefined) row.postal_code = validatedInput.postalCode;
+  if (validatedInput.city !== undefined) row.city = validatedInput.city;
+  if (validatedInput.country !== undefined) row.country = validatedInput.country;
+  if (validatedInput.latitude !== undefined) row.latitude = validatedInput.latitude;
+  if (validatedInput.longitude !== undefined) row.longitude = validatedInput.longitude;
+  if (validatedInput.pickupInstructions !== undefined) row.pickup_instructions = validatedInput.pickupInstructions;
+  if (validatedInput.needsWheelchair !== undefined) row.needs_wheelchair = validatedInput.needsWheelchair;
+  if (validatedInput.needsWalker !== undefined) row.needs_walker = validatedInput.needsWalker;
+  if (validatedInput.needsAssistance !== undefined) row.needs_assistance = validatedInput.needsAssistance;
+  if (validatedInput.emergencyContactName !== undefined) row.emergency_contact_name = validatedInput.emergencyContactName;
+  if (validatedInput.emergencyContactPhone !== undefined) row.emergency_contact_phone = validatedInput.emergencyContactPhone;
+  if (validatedInput.insurance !== undefined) row.insurance = validatedInput.insurance;
+  if (validatedInput.costCenter !== undefined) row.cost_center = validatedInput.costCenter;
+  if (validatedInput.notes !== undefined) row.notes = validatedInput.notes;
+  if (validatedInput.isActive !== undefined) row.is_active = validatedInput.isActive;
 
   const { data, error } = await supabase
     .from('patients')

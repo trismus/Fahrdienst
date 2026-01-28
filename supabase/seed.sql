@@ -1,10 +1,23 @@
 -- =============================================================================
--- SEED DATA - Swiss Sample Data for Fahrdienst App
--- Run this after the migration to populate test data
+-- SEED DATA - DEVELOPMENT/TEST ONLY
+-- =============================================================================
+-- WARNING: This file contains FAKE TEST DATA only!
+-- DO NOT deploy this to production environments.
+-- All names, addresses, and contact information are entirely fictional.
 -- =============================================================================
 
+-- Safety check: Prevent accidental execution in production
+DO $$
+BEGIN
+    -- Check for production indicators
+    IF current_setting('app.environment', true) = 'production' THEN
+        RAISE EXCEPTION 'SEED DATA BLOCKED: Cannot run seed data in production environment!';
+    END IF;
+END $$;
+
 -- =============================================================================
--- PATIENTS
+-- TEST PATIENTS (Fictional Characters)
+-- All data is obviously fake - using cartoon/movie character names
 -- =============================================================================
 
 INSERT INTO patients (
@@ -30,118 +43,118 @@ INSERT INTO patients (
     notes
 ) VALUES
 (
-    'PAT-001',
-    'Hans',
-    'Müller',
-    '1945-03-15',
-    '+41 79 123 45 67',
-    'hans.mueller@bluewin.ch',
-    'Bahnhofstrasse 12',
-    '5400',
-    'Baden',
+    'TEST-PAT-001',
+    'Heidi',
+    'Testperson',
+    '1945-01-01',
+    '+41 79 000 00 01',
+    'heidi.test@example.invalid',
+    'Teststrasse 1',
+    '0001',
+    'Testdorf',
     'CH',
-    47.4731,
-    8.3068,
-    'Klingel bei Müller, 2. Stock links',
+    47.0000,
+    8.0000,
+    '[TEST] Fiktive Abhol-Anweisungen',
     FALSE,
     TRUE,
     TRUE,
-    'Maria Müller',
-    '+41 79 234 56 78',
-    'Helsana',
-    'Herr Müller braucht etwas mehr Zeit beim Einsteigen'
+    'Peter Testperson',
+    '+41 79 000 00 02',
+    'Test-Versicherung',
+    '[TEST DATA] Dies ist ein fiktiver Testpatient'
 ),
 (
-    'PAT-002',
-    'Elisabeth',
-    'Schneider',
-    '1952-07-22',
-    '+41 76 987 65 43',
+    'TEST-PAT-002',
+    'Wilhelm',
+    'Beispiel',
+    '1950-06-15',
+    '+41 76 000 00 03',
     NULL,
-    'Hauptstrasse 45',
-    '5430',
-    'Wettingen',
+    'Musterweg 42',
+    '0002',
+    'Musterstadt',
     'CH',
-    47.4622,
-    8.3193,
-    'Rollstuhlrampe vorhanden, Seiteneingang benutzen',
+    47.1000,
+    8.1000,
+    '[TEST] Rollstuhlrampe - TESTDATEN',
     TRUE,
     FALSE,
     TRUE,
-    'Peter Schneider',
-    '+41 76 876 54 32',
-    'CSS',
-    'Dialyse-Patientin, 3x wöchentlich'
+    'Klara Beispiel',
+    '+41 76 000 00 04',
+    'Muster-Krankenkasse',
+    '[TEST DATA] Fiktiver Dialyse-Patient'
 ),
 (
-    'PAT-003',
-    'Walter',
-    'Brunner',
-    '1938-11-08',
-    '+41 78 111 22 33',
-    'w.brunner@gmail.com',
-    'Kirchgasse 8',
-    '5442',
-    'Fislisbach',
+    'TEST-PAT-003',
+    'Max',
+    'Mustermann',
+    '1938-12-31',
+    '+41 78 000 00 05',
+    'max.mustermann@example.invalid',
+    'Beispielgasse 99',
+    '0003',
+    'Demoville',
     'CH',
-    47.4372,
-    8.2912,
+    47.2000,
+    8.2000,
     NULL,
     FALSE,
     FALSE,
     FALSE,
-    'Anna Brunner',
-    '+41 78 222 33 44',
-    'Swica',
-    NULL
+    'Erika Mustermann',
+    '+41 78 000 00 06',
+    'Demo-Versicherung',
+    '[TEST DATA] Standard-Testpatient ohne spezielle Anforderungen'
 ),
 (
-    'PAT-004',
-    'Margrit',
-    'Keller',
-    '1960-04-30',
-    '+41 79 555 66 77',
-    'margrit.keller@sunrise.ch',
-    'Zürcherstrasse 102',
-    '5200',
-    'Brugg',
+    'TEST-PAT-004',
+    'Anna',
+    'Testerin',
+    '1960-03-20',
+    '+41 79 000 00 07',
+    'anna.test@example.invalid',
+    'Fakestrasse 123',
+    '0004',
+    'Fiktivhausen',
     'CH',
-    47.4856,
-    8.2082,
-    'Wohnung A3, Erdgeschoss',
+    47.3000,
+    8.3000,
+    '[TEST] Erdgeschoss - TESTDATEN',
     FALSE,
     TRUE,
     FALSE,
     NULL,
     NULL,
-    'Concordia',
-    'Hörgerät - bitte deutlich sprechen'
+    'Fake-Insurance AG',
+    '[TEST DATA] Testpatientin mit Rollator'
 ),
 (
-    'PAT-005',
-    'Fritz',
-    'Weber',
-    '1949-09-12',
-    '+41 76 444 55 66',
+    'TEST-PAT-005',
+    'Otto',
+    'Platzhalter',
+    '1949-09-09',
+    '+41 76 000 00 08',
     NULL,
-    'Dorfstrasse 23',
-    '5412',
-    'Gebenstorf',
+    'Dummyweg 7',
+    '0005',
+    'Placeholder',
     'CH',
-    47.4797,
-    8.2372,
-    'Gelbes Haus mit grünen Fensterläden',
+    47.4000,
+    8.4000,
+    '[TEST] Gelbes Testhaus',
     TRUE,
     FALSE,
     TRUE,
-    'Ruth Weber',
-    '+41 76 333 44 55',
-    'Visana',
-    'Rollstuhl muss mitgenommen werden'
+    'Greta Platzhalter',
+    '+41 76 000 00 09',
+    'Placeholder-Kasse',
+    '[TEST DATA] Rollstuhl erforderlich - TESTDATEN'
 );
 
 -- =============================================================================
--- DRIVERS
+-- TEST DRIVERS (Fictional)
 -- =============================================================================
 
 INSERT INTO drivers (
@@ -159,50 +172,50 @@ INSERT INTO drivers (
     notes
 ) VALUES
 (
-    'DRV-01',
-    'Thomas',
-    'Steiner',
-    '+41 79 888 99 00',
-    'thomas.steiner@fahrdienst.ch',
-    'Baden',
-    'Landstrasse 15',
-    '5400',
+    'TEST-DRV-01',
+    'Fahrer',
+    'Eins',
+    '+41 79 000 00 10',
+    'fahrer1@example.invalid',
+    'Testdorf',
+    'Teststrasse 10',
+    '0001',
     TRUE,
     'accessible_van',
-    'AG 123456',
-    'Erfahren mit Rollstuhltransport'
+    'XX 000001',
+    '[TEST] Testfahrer mit Rollstuhltransport-Erfahrung'
 ),
 (
-    'DRV-02',
-    'Sandra',
-    'Huber',
-    '+41 76 777 88 99',
-    's.huber@fahrdienst.ch',
-    'Wettingen',
-    'Bahnhofplatz 3',
-    '5430',
+    'TEST-DRV-02',
+    'Fahrerin',
+    'Zwei',
+    '+41 76 000 00 11',
+    'fahrer2@example.invalid',
+    'Musterstadt',
+    'Musterplatz 5',
+    '0002',
     TRUE,
     'car',
-    'AG 654321',
-    NULL
+    'XX 000002',
+    '[TEST] Standard-Testfahrerin'
 ),
 (
-    'DRV-03',
-    'Marco',
-    'Berger',
-    '+41 78 666 77 88',
-    'marco.berger@fahrdienst.ch',
-    'Brugg',
-    'Neumarkt 7',
-    '5200',
+    'TEST-DRV-03',
+    'Test',
+    'Driver',
+    '+41 78 000 00 12',
+    'testdriver@example.invalid',
+    'Demoville',
+    'Demostrasse 3',
+    '0003',
     TRUE,
     'van',
-    'AG 112233',
-    'Bevorzugt Frühdienst'
+    'XX 000003',
+    '[TEST] Testfahrer - DEVELOPMENT ONLY'
 );
 
 -- =============================================================================
--- DESTINATIONS
+-- TEST DESTINATIONS (Fictional Medical Facilities)
 -- =============================================================================
 
 INSERT INTO destinations (
@@ -222,123 +235,122 @@ INSERT INTO destinations (
     notes
 ) VALUES
 (
-    'Kantonsspital Baden',
+    '[TEST] Musterspital Teststadt',
     'hospital',
     NULL,
-    'Im Ergel 1',
-    '5404',
-    'Baden',
+    'Spitalweg 1',
+    '0001',
+    'Teststadt',
     'CH',
-    47.4654,
-    8.2954,
-    '+41 56 486 21 11',
-    'info@ksb.ch',
-    'Notfall 24h, Ambulant Mo-Fr 07:00-18:00',
-    'Haupteingang, dann links zur Anmeldung',
-    'Grosses Spital, Parkplätze vor Haupteingang'
+    47.0000,
+    8.0000,
+    '+41 00 000 00 01',
+    'info@test-hospital.invalid',
+    '[TEST] Mo-Fr 08:00-17:00',
+    '[TEST] Fiktiver Haupteingang',
+    '[TEST DATA] Fiktives Testspital - NUR FÜR ENTWICKLUNG'
 ),
 (
-    'Kantonsspital Baden - Dialyse',
+    '[TEST] Musterspital - Dialyse',
     'hospital',
-    'Dialysezentrum',
-    'Im Ergel 1',
-    '5404',
-    'Baden',
+    'Test-Dialysezentrum',
+    'Spitalweg 1',
+    '0001',
+    'Teststadt',
     'CH',
-    47.4654,
-    8.2954,
-    '+41 56 486 25 00',
-    'dialyse@ksb.ch',
-    'Mo-Sa 06:00-22:00',
-    'Eingang Haus B, Lift in den 2. Stock',
-    'Patienten sollten 10min vor Termin da sein'
+    47.0000,
+    8.0000,
+    '+41 00 000 00 02',
+    'dialyse@test-hospital.invalid',
+    '[TEST] Mo-Sa 06:00-22:00',
+    '[TEST] Eingang B - TESTDATEN',
+    '[TEST DATA] Fiktive Dialysestation'
 ),
 (
-    'Praxis Dr. med. Andrea Fischer',
+    '[TEST] Praxis Dr. Testdoktor',
     'doctor',
-    'Allgemeinmedizin',
-    'Weite Gasse 34',
-    '5400',
-    'Baden',
+    'Test-Allgemeinmedizin',
+    'Praxisstrasse 10',
+    '0002',
+    'Musterstadt',
     'CH',
-    47.4726,
-    8.3042,
-    '+41 56 222 33 44',
-    'praxis@dr-fischer.ch',
-    'Mo-Fr 08:00-12:00, 14:00-17:00',
-    'Klingeln bei Fischer, 1. OG',
-    NULL
+    47.1000,
+    8.1000,
+    '+41 00 000 00 03',
+    'praxis@testdoktor.invalid',
+    '[TEST] Mo-Fr 08:00-12:00',
+    '[TEST] Fiktive Praxis - 1. OG',
+    '[TEST DATA] Testpraxis - DEVELOPMENT ONLY'
 ),
 (
-    'Physiotherapie Limmat',
+    '[TEST] Demo-Physiotherapie',
     'therapy',
-    'Physiotherapie',
-    'Mellingerstrasse 12',
-    '5400',
-    'Baden',
+    'Test-Physiotherapie',
+    'Therapieweg 5',
+    '0003',
+    'Demoville',
     'CH',
-    47.4712,
-    8.3001,
-    '+41 56 555 66 77',
-    'info@physio-limmat.ch',
-    'Mo-Fr 07:00-20:00, Sa 08:00-12:00',
-    'Erdgeschoss, rollstuhlgängig',
-    'Eigene Parkplätze vorhanden'
+    47.2000,
+    8.2000,
+    '+41 00 000 00 04',
+    'info@test-physio.invalid',
+    '[TEST] Mo-Fr 07:00-20:00',
+    '[TEST] Erdgeschoss - TESTDATEN',
+    '[TEST DATA] Fiktive Physiotherapie'
 ),
 (
-    'Augenzentrum Aargau',
+    '[TEST] Muster-Augenzentrum',
     'doctor',
-    'Augenheilkunde',
-    'Bahnhofstrasse 42',
-    '5430',
-    'Wettingen',
+    'Test-Augenheilkunde',
+    'Augenstrasse 20',
+    '0004',
+    'Fiktivhausen',
     'CH',
-    47.4598,
-    8.3145,
-    '+41 56 444 55 66',
-    'kontakt@augenzentrum-ag.ch',
-    'Mo-Fr 08:00-17:00',
-    'Lift vorhanden, Anmeldung im 3. Stock',
-    'Nach Augenuntersuchung oft Begleitperson nötig (Pupillenerweiterung)'
+    47.3000,
+    8.3000,
+    '+41 00 000 00 05',
+    'info@test-augen.invalid',
+    '[TEST] Mo-Fr 08:00-17:00',
+    '[TEST] 3. Stock - TESTDATEN',
+    '[TEST DATA] Fiktives Augenzentrum'
 ),
 (
-    'Hirslanden Klinik Baden',
+    '[TEST] Testklinik Premium',
     'hospital',
     NULL,
-    'Schänisweg',
-    '5400',
-    'Baden',
+    'Klinikstrasse 99',
+    '0005',
+    'Placeholder',
     'CH',
-    47.4712,
-    8.2945,
-    '+41 56 486 81 11',
-    'info@hirslanden.ch',
-    'Ambulant Mo-Fr 07:30-18:00',
-    'Haupteingang, Valet Parking möglich',
-    'Privatklinik'
+    47.4000,
+    8.4000,
+    '+41 00 000 00 06',
+    'info@testklinik.invalid',
+    '[TEST] Mo-Fr 07:30-18:00',
+    '[TEST] Haupteingang - TESTDATEN',
+    '[TEST DATA] Fiktive Privatklinik - NUR FÜR TESTS'
 ),
 (
-    'Rheumazentrum Baden',
+    '[TEST] Demo-Rheumazentrum',
     'therapy',
-    'Rheumatologie',
-    'Kurplatz 2',
-    '5400',
-    'Baden',
+    'Test-Rheumatologie',
+    'Thermalweg 2',
+    '0006',
+    'Testbad',
     'CH',
-    47.4698,
-    8.3112,
-    '+41 56 333 44 55',
+    47.5000,
+    8.5000,
+    '+41 00 000 00 07',
     NULL,
-    'Mo-Fr 08:00-18:00',
-    'Thermalbad-Gebäude, Eingang Nord',
-    'Warme Umgebung, leichte Kleidung empfohlen'
+    '[TEST] Mo-Fr 08:00-18:00',
+    '[TEST] Nordeingang - TESTDATEN',
+    '[TEST DATA] Fiktives Rheumazentrum'
 );
 
 -- =============================================================================
 -- VERIFY SEED DATA
 -- =============================================================================
 
--- Verify counts
 DO $$
 DECLARE
     patient_count INTEGER;
@@ -349,8 +361,13 @@ BEGIN
     SELECT COUNT(*) INTO driver_count FROM drivers;
     SELECT COUNT(*) INTO destination_count FROM destinations;
 
-    RAISE NOTICE 'Seed data loaded:';
-    RAISE NOTICE '  Patients: %', patient_count;
-    RAISE NOTICE '  Drivers: %', driver_count;
-    RAISE NOTICE '  Destinations: %', destination_count;
+    RAISE NOTICE '=====================================================';
+    RAISE NOTICE 'TEST SEED DATA LOADED (DEVELOPMENT ONLY)';
+    RAISE NOTICE '=====================================================';
+    RAISE NOTICE '  Test Patients: %', patient_count;
+    RAISE NOTICE '  Test Drivers: %', driver_count;
+    RAISE NOTICE '  Test Destinations: %', destination_count;
+    RAISE NOTICE '=====================================================';
+    RAISE NOTICE 'WARNING: All data is FAKE and for testing only!';
+    RAISE NOTICE '=====================================================';
 END $$;

@@ -5,12 +5,18 @@ import { createClient } from '@/lib/supabase/server';
 import {
   Driver,
   DriverRow,
-  CreateDriverInput,
-  UpdateDriverInput,
   driverRowToEntity,
   driverInputToRow,
 } from '@/types/database';
 import { sanitizeSearchQuery, validateId } from '@/lib/utils/sanitize';
+import {
+  createDriverSchema,
+  updateDriverSchema,
+  validate,
+  type CreateDriverInput,
+  type UpdateDriverInput,
+} from '@/lib/validations/schemas';
+import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from '@/lib/utils/rate-limit';
 
 // =============================================================================
 // READ OPERATIONS
@@ -80,6 +86,15 @@ export async function getDriverByUserId(userId: string): Promise<Driver | null> 
 export async function searchDrivers(query: string): Promise<Driver[]> {
   const supabase = await createClient();
 
+  // Rate limiting: get user ID for rate limit key
+  const { data: { user } } = await supabase.auth.getUser();
+  const rateLimitKey = createRateLimitKey(user?.id || null, 'search:drivers');
+  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.search);
+
+  if (!rateLimitResult.success) {
+    throw new RateLimitError(rateLimitResult.resetTime);
+  }
+
   // Sanitize input to prevent SQL injection
   const sanitized = sanitizeSearchQuery(query);
 
@@ -107,7 +122,9 @@ export async function searchDrivers(query: string): Promise<Driver[]> {
 export async function createDriver(input: CreateDriverInput): Promise<Driver> {
   const supabase = await createClient();
 
-  const row = driverInputToRow(input);
+  // Validate input to prevent XSS and ensure data integrity
+  const validatedInput = validate(createDriverSchema, input);
+  const row = driverInputToRow(validatedInput);
 
   const { data, error } = await supabase
     .from('drivers')
@@ -131,22 +148,25 @@ export async function updateDriver(id: string, input: UpdateDriverInput): Promis
   // Validate ID format to prevent injection
   const validId = validateId(id, 'driver');
 
+  // Validate input to prevent XSS and ensure data integrity
+  const validatedInput = validate(updateDriverSchema, input);
+
   const row: Partial<DriverRow> = {};
 
-  if (input.userId !== undefined) row.user_id = input.userId;
-  if (input.driverCode !== undefined) row.driver_code = input.driverCode;
-  if (input.firstName !== undefined) row.first_name = input.firstName;
-  if (input.lastName !== undefined) row.last_name = input.lastName;
-  if (input.phone !== undefined) row.phone = input.phone;
-  if (input.email !== undefined) row.email = input.email;
-  if (input.homeCity !== undefined) row.home_city = input.homeCity;
-  if (input.homeStreet !== undefined) row.home_street = input.homeStreet;
-  if (input.homePostalCode !== undefined) row.home_postal_code = input.homePostalCode;
-  if (input.hasDrivingLicense !== undefined) row.has_driving_license = input.hasDrivingLicense;
-  if (input.vehicleType !== undefined) row.vehicle_type = input.vehicleType;
-  if (input.vehiclePlate !== undefined) row.vehicle_plate = input.vehiclePlate;
-  if (input.notes !== undefined) row.notes = input.notes;
-  if (input.isActive !== undefined) row.is_active = input.isActive;
+  if (validatedInput.userId !== undefined) row.user_id = validatedInput.userId;
+  if (validatedInput.driverCode !== undefined) row.driver_code = validatedInput.driverCode;
+  if (validatedInput.firstName !== undefined) row.first_name = validatedInput.firstName;
+  if (validatedInput.lastName !== undefined) row.last_name = validatedInput.lastName;
+  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone;
+  if (validatedInput.email !== undefined) row.email = validatedInput.email;
+  if (validatedInput.homeCity !== undefined) row.home_city = validatedInput.homeCity;
+  if (validatedInput.homeStreet !== undefined) row.home_street = validatedInput.homeStreet;
+  if (validatedInput.homePostalCode !== undefined) row.home_postal_code = validatedInput.homePostalCode;
+  if (validatedInput.hasDrivingLicense !== undefined) row.has_driving_license = validatedInput.hasDrivingLicense;
+  if (validatedInput.vehicleType !== undefined) row.vehicle_type = validatedInput.vehicleType;
+  if (validatedInput.vehiclePlate !== undefined) row.vehicle_plate = validatedInput.vehiclePlate;
+  if (validatedInput.notes !== undefined) row.notes = validatedInput.notes;
+  if (validatedInput.isActive !== undefined) row.is_active = validatedInput.isActive;
 
   const { data, error } = await supabase
     .from('drivers')

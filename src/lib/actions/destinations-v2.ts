@@ -5,13 +5,20 @@ import { createClient } from '@/lib/supabase/server';
 import {
   Destination,
   DestinationRow,
-  CreateDestinationInput,
-  UpdateDestinationInput,
   DestinationType,
   destinationRowToEntity,
   destinationInputToRow,
 } from '@/types/database';
 import { sanitizeSearchQuery, validateId } from '@/lib/utils/sanitize';
+import {
+  createDestinationSchema,
+  updateDestinationSchema,
+  destinationTypeSchema,
+  validate,
+  type CreateDestinationInput,
+  type UpdateDestinationInput,
+} from '@/lib/validations/schemas';
+import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from '@/lib/utils/rate-limit';
 
 // =============================================================================
 // READ OPERATIONS
@@ -59,10 +66,13 @@ export async function getDestinationById(id: string): Promise<Destination | null
 export async function getDestinationsByType(type: DestinationType): Promise<Destination[]> {
   const supabase = await createClient();
 
+  // Validate type to ensure it's a valid enum value
+  const validType = validate(destinationTypeSchema, type);
+
   const { data, error } = await supabase
     .from('destinations')
     .select('*')
-    .eq('destination_type', type)
+    .eq('destination_type', validType)
     .eq('is_active', true)
     .order('name');
 
@@ -73,6 +83,15 @@ export async function getDestinationsByType(type: DestinationType): Promise<Dest
 
 export async function searchDestinations(query: string): Promise<Destination[]> {
   const supabase = await createClient();
+
+  // Rate limiting: get user ID for rate limit key
+  const { data: { user } } = await supabase.auth.getUser();
+  const rateLimitKey = createRateLimitKey(user?.id || null, 'search:destinations');
+  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.search);
+
+  if (!rateLimitResult.success) {
+    throw new RateLimitError(rateLimitResult.resetTime);
+  }
 
   // Sanitize input to prevent SQL injection
   const sanitized = sanitizeSearchQuery(query);
@@ -101,7 +120,9 @@ export async function searchDestinations(query: string): Promise<Destination[]> 
 export async function createDestination(input: CreateDestinationInput): Promise<Destination> {
   const supabase = await createClient();
 
-  const row = destinationInputToRow(input);
+  // Validate input to prevent XSS and ensure data integrity
+  const validatedInput = validate(createDestinationSchema, input);
+  const row = destinationInputToRow(validatedInput);
 
   const { data, error } = await supabase
     .from('destinations')
@@ -125,24 +146,27 @@ export async function updateDestination(id: string, input: UpdateDestinationInpu
   // Validate ID format to prevent injection
   const validId = validateId(id, 'destination');
 
+  // Validate input to prevent XSS and ensure data integrity
+  const validatedInput = validate(updateDestinationSchema, input);
+
   const row: Partial<DestinationRow> = {};
 
-  if (input.externalId !== undefined) row.external_id = input.externalId;
-  if (input.name !== undefined) row.name = input.name;
-  if (input.destinationType !== undefined) row.destination_type = input.destinationType;
-  if (input.department !== undefined) row.department = input.department;
-  if (input.street !== undefined) row.street = input.street;
-  if (input.postalCode !== undefined) row.postal_code = input.postalCode;
-  if (input.city !== undefined) row.city = input.city;
-  if (input.country !== undefined) row.country = input.country;
-  if (input.latitude !== undefined) row.latitude = input.latitude;
-  if (input.longitude !== undefined) row.longitude = input.longitude;
-  if (input.phone !== undefined) row.phone = input.phone;
-  if (input.email !== undefined) row.email = input.email;
-  if (input.openingHours !== undefined) row.opening_hours = input.openingHours;
-  if (input.arrivalInstructions !== undefined) row.arrival_instructions = input.arrivalInstructions;
-  if (input.notes !== undefined) row.notes = input.notes;
-  if (input.isActive !== undefined) row.is_active = input.isActive;
+  if (validatedInput.externalId !== undefined) row.external_id = validatedInput.externalId;
+  if (validatedInput.name !== undefined) row.name = validatedInput.name;
+  if (validatedInput.destinationType !== undefined) row.destination_type = validatedInput.destinationType;
+  if (validatedInput.department !== undefined) row.department = validatedInput.department;
+  if (validatedInput.street !== undefined) row.street = validatedInput.street;
+  if (validatedInput.postalCode !== undefined) row.postal_code = validatedInput.postalCode;
+  if (validatedInput.city !== undefined) row.city = validatedInput.city;
+  if (validatedInput.country !== undefined) row.country = validatedInput.country;
+  if (validatedInput.latitude !== undefined) row.latitude = validatedInput.latitude;
+  if (validatedInput.longitude !== undefined) row.longitude = validatedInput.longitude;
+  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone;
+  if (validatedInput.email !== undefined) row.email = validatedInput.email;
+  if (validatedInput.openingHours !== undefined) row.opening_hours = validatedInput.openingHours;
+  if (validatedInput.arrivalInstructions !== undefined) row.arrival_instructions = validatedInput.arrivalInstructions;
+  if (validatedInput.notes !== undefined) row.notes = validatedInput.notes;
+  if (validatedInput.isActive !== undefined) row.is_active = validatedInput.isActive;
 
   const { data, error } = await supabase
     .from('destinations')
