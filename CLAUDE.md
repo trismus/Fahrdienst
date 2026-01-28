@@ -23,7 +23,7 @@ npm run lint      # Run ESLint
 - **Backend**: Supabase (PostgreSQL, Auth, Storage)
 - **Hosting**: Vercel
 - **Maps**: Google Maps API (Places, Directions, Distance Matrix)
-- **Notifications**: TBD (Twilio or MessageBird for SMS/Email)
+- **Notifications**: Twilio SMS (Sprint 4)
 
 ## Architecture
 
@@ -71,6 +71,16 @@ src/
 ### Ride Status Flow
 `planned → confirmed → in_progress → completed` (or `cancelled`)
 
+### Ride Substatus (Sprint 4)
+For in_progress rides, granular tracking via substatus:
+`waiting → en_route_pickup → at_pickup → en_route_destination → at_destination → completed`
+
+### Ride Execution Timestamps
+- `started_at` - When driver starts (leaves for pickup)
+- `picked_up_at` - When patient is picked up
+- `arrived_at` - When arrived at destination
+- `completed_at` - When ride is fully completed
+
 ## Key Components
 
 ### Server Actions (`src/lib/actions/`)
@@ -88,7 +98,12 @@ Key functions:
 - `patients-v2.ts` - getPatients, getPatientById, searchPatients, createPatient, updatePatient, softDeletePatient
 - `drivers-v2.ts` - getDrivers, getDriverById, searchDrivers, createDriver, updateDriver, softDeleteDriver
 - `destinations-v2.ts` - getDestinations, getDestinationById, searchDestinations, createDestination, updateDestination, softDeleteDestination
-- `rides.ts` - getRides, createRide, confirmRide, rejectRide, startRide, completeRide
+- `rides-v2.ts` - getRides, getRideById, getRideStats, createRide, updateRide, cancelRide
+- `rides-driver.ts` - Driver-specific actions with full execution workflow:
+  - `getDriverRides`, `getDriverRide` - Fetch rides for driver
+  - `driverConfirmRide`, `driverRejectRide` - Confirm/reject assignments
+  - `driverStartRide`, `driverArrivedAtPickup`, `driverPickedUpPatient` - Start workflow
+  - `driverArrivedAtDestination`, `driverCompleteRide`, `driverQuickCompleteRide` - Complete workflow
 
 ### Maps Integration
 - `AddressAutocomplete` - Google Places API for address input with coordinates
@@ -101,6 +116,27 @@ Key functions:
 ### Availability
 - `AvailabilityGrid` - 5x5 grid (Mon-Fri, 08-18 in 2h blocks), click to toggle
 - `AbsenceList` - CRUD for driver absences with date validation
+
+### Real-time Updates (Sprint 4)
+- `src/hooks/use-realtime-rides.ts` - Supabase real-time subscription hook
+- `src/components/dashboard/` - Real-time dashboard components:
+  - `ActiveRidesCard` - Live counter of in_progress rides
+  - `LiveActivityPanel` - Feed of recent ride status changes
+  - `DashboardAutoRefresh` - Wrapper for auto-refreshing on changes
+
+### SMS Notifications (Sprint 4)
+- `src/lib/sms/` - Twilio SMS integration:
+  - `notification-service.ts` - High-level notification API
+  - `twilio-client.ts` - Twilio API client with rate limiting
+  - `templates.ts` - German message templates
+  - `types.ts` - Type definitions
+
+Notifications are triggered automatically on:
+- `ride_confirmed` → Patient notified
+- `ride_started` → Patient notified with ETA
+- `driver_arrived` → Patient notified
+- `patient_picked_up` → Destination notified with ETA
+- `ride_completed` → Patient notified
 
 ## Database
 
@@ -118,6 +154,10 @@ Copy `.env.local.example` to `.env.local` and configure:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
 - `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` - Client-side Google Maps key
 - `GOOGLE_MAPS_SERVER_API_KEY` - Server-side Google Maps key (optional)
+- `SMS_ENABLED` - Set to 'true' to enable SMS sending
+- `TWILIO_ACCOUNT_SID` - Twilio account SID
+- `TWILIO_AUTH_TOKEN` - Twilio auth token
+- `TWILIO_FROM_NUMBER` - Twilio phone number (E.164 format)
 
 ## Design System
 
@@ -170,11 +210,10 @@ The codebase implements defense-in-depth security practices:
 
 ## Still TODO
 
-- Authentication flow (login/logout pages)
-- SMS/Email notifications implementation
 - Recurring rides UI
 - RLS policies for role-based access
-- Migrate remaining v1 server actions to v2 (rides.ts needs security hardening)
+- Notification logs database table (currently logs to console)
+- Ride reminder scheduler (cron job for pre-pickup reminders)
 
 ## Language
 

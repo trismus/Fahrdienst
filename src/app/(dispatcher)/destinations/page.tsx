@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Button, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui';
+import { Button, Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui';
 import { getDestinations } from '@/lib/actions/destinations-v2';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -16,16 +16,42 @@ const TYPE_COLORS: Record<string, string> = {
   other: 'bg-gray-100 text-gray-800',
 };
 
-export default async function DestinationsPage() {
-  const destinations = await getDestinations();
+interface PageProps {
+  searchParams: Promise<{ showInactive?: string }>;
+}
+
+export default async function DestinationsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const showInactive = params.showInactive === 'true';
+  const destinations = await getDestinations(showInactive);
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Ziele</h1>
-        <Link href="/destinations/new">
-          <Button>Neues Ziel</Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Ziele</h1>
+          <span className="text-gray-500 text-sm">
+            {destinations.length} {showInactive ? 'gesamt' : 'aktiv'}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {showInactive ? (
+            <Link href="/destinations">
+              <Button variant="secondary" size="sm">
+                Nur aktive anzeigen
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/destinations?showInactive=true">
+              <Button variant="ghost" size="sm">
+                Inaktive einblenden
+              </Button>
+            </Link>
+          )}
+          <Link href="/destinations/new">
+            <Button>Neues Ziel</Button>
+          </Link>
+        </div>
       </div>
 
       <Card padding="none">
@@ -35,20 +61,21 @@ export default async function DestinationsPage() {
               <TableHead>Name</TableHead>
               <TableHead>Typ</TableHead>
               <TableHead>Adresse</TableHead>
-              <TableHead>Öffnungszeiten</TableHead>
+              <TableHead>Oeffnungszeiten</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {destinations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={6} className="text-center text-gray-500 py-8">
                   Keine Ziele vorhanden
                 </TableCell>
               </TableRow>
             ) : (
               destinations.map((destination) => (
-                <TableRow key={destination.id}>
+                <TableRow key={destination.id} className={!destination.isActive ? 'opacity-60' : ''}>
                   <TableCell>
                     <div>
                       <div className="font-medium">{destination.name}</div>
@@ -75,6 +102,13 @@ export default async function DestinationsPage() {
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
                     {destination.openingHours || '-'}
+                  </TableCell>
+                  <TableCell>
+                    {destination.isActive ? (
+                      <Badge variant="success">Aktiv</Badge>
+                    ) : (
+                      <Badge variant="danger">Inaktiv</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Link href={`/destinations/${destination.id}`}>

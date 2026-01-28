@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { RideFormV2 } from '@/components/forms/ride-form-v2';
+import { DriverAssignment } from '@/components/rides';
 import { Card, Button, Badge } from '@/components/ui';
 import { getRideById, type RideStatus } from '@/lib/actions/rides-v2';
 import { getPatients } from '@/lib/actions/patients-v2';
@@ -248,19 +249,22 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
             </div>
           </Card>
 
-          {/* Driver Card */}
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Fahrer
-            </h2>
-            {ride.driver ? (
+          {/* Driver Assignment Card - Interactive */}
+          <DriverAssignment
+            rideId={ride.id}
+            currentDriverId={ride.driverId}
+            currentDriverName={ride.driver ? `${ride.driver.firstName} ${ride.driver.lastName}` : null}
+            pickupTime={ride.pickupTime}
+            rideStatus={ride.status}
+          />
+
+          {/* Driver Contact Info (if assigned) */}
+          {ride.driver && (
+            <Card className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Fahrer-Kontakt
+              </h2>
               <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
-                  <p className="font-medium text-gray-900 dark:text-white">
-                    {ride.driver.firstName} {ride.driver.lastName}
-                  </p>
-                </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Telefon</p>
                   <a
@@ -271,17 +275,8 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
                   </a>
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-900/10 rounded-xl">
-                <svg className="w-6 h-6 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <p className="text-orange-700 dark:text-orange-400 font-medium">
-                  Kein Fahrer zugewiesen
-                </p>
-              </div>
-            )}
-          </Card>
+            </Card>
+          )}
 
           {/* Notes Card */}
           {ride.notes && (

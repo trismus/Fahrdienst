@@ -147,8 +147,6 @@ async function logNotification(
   messageId?: string,
   errorMessage?: string
 ): Promise<void> {
-  const supabase = await createClient();
-
   // Note: This requires a notification_logs table to be created
   // For now, we just log to console
   console.log('[SMS] Notification log:', {

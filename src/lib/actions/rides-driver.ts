@@ -181,6 +181,11 @@ export async function driverConfirmRide(
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
+  // Send SMS notification to patient (non-blocking)
+  notifyRideConfirmed(validRideId).catch((err) => {
+    console.error('[SMS] Failed to send ride confirmed notification:', err);
+  });
+
   revalidatePaths(validRideId);
   return { success: true, message: 'Fahrt erfolgreich bestaetigt' };
 }
@@ -288,6 +293,19 @@ export async function driverStartRide(
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
+  // Send SMS notification with ETA (non-blocking)
+  // Use estimated duration if available, otherwise default to 15 minutes
+  const { data: rideData } = await supabase
+    .from('rides')
+    .select('estimated_duration')
+    .eq('id', validRideId)
+    .single();
+
+  const etaMinutes = rideData?.estimated_duration || 15;
+  notifyRideStarted(validRideId, etaMinutes).catch((err) => {
+    console.error('[SMS] Failed to send ride started notification:', err);
+  });
+
   revalidatePaths(validRideId);
   return { success: true, message: 'Fahrt gestartet - auf dem Weg zur Abholung' };
 }
@@ -333,6 +351,11 @@ export async function driverArrivedAtPickup(
   if (updateError) {
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
+
+  // Send SMS notification to patient (non-blocking)
+  notifyDriverArrived(validRideId).catch((err) => {
+    console.error('[SMS] Failed to send driver arrived notification:', err);
+  });
 
   revalidatePaths(validRideId);
   return { success: true, message: 'Bei Patient angekommen' };
@@ -387,6 +410,18 @@ export async function driverPickedUpPatient(
   if (updateError) {
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
+
+  // Send SMS notification to destination with ETA (non-blocking)
+  const { data: rideData } = await supabase
+    .from('rides')
+    .select('estimated_duration')
+    .eq('id', validRideId)
+    .single();
+
+  const etaMinutes = rideData?.estimated_duration || 15;
+  notifyPatientPickedUp(validRideId, etaMinutes).catch((err) => {
+    console.error('[SMS] Failed to send patient picked up notification:', err);
+  });
 
   revalidatePaths(validRideId);
   return { success: true, message: 'Patient abgeholt - auf dem Weg zum Ziel' };
@@ -507,6 +542,11 @@ export async function driverCompleteRide(
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
 
+  // Send SMS notification to patient (non-blocking)
+  notifyRideCompleted(validRideId).catch((err) => {
+    console.error('[SMS] Failed to send ride completed notification:', err);
+  });
+
   revalidatePaths(validRideId);
   return { success: true, message: 'Fahrt erfolgreich abgeschlossen' };
 }
@@ -569,6 +609,11 @@ export async function driverQuickCompleteRide(
   if (updateError) {
     return { success: false, message: `Fehler: ${updateError.message}` };
   }
+
+  // Send SMS notification to patient (non-blocking)
+  notifyRideCompleted(validRideId).catch((err) => {
+    console.error('[SMS] Failed to send ride completed notification:', err);
+  });
 
   revalidatePaths(validRideId);
   return { success: true, message: 'Fahrt erfolgreich abgeschlossen' };

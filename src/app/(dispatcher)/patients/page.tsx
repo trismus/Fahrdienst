@@ -1,17 +1,43 @@
 import Link from 'next/link';
-import { Button, Card, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui';
+import { Button, Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui';
 import { getPatients } from '@/lib/actions/patients-v2';
 
-export default async function PatientsPage() {
-  const patients = await getPatients();
+interface PageProps {
+  searchParams: Promise<{ showInactive?: string }>;
+}
+
+export default async function PatientsPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const showInactive = params.showInactive === 'true';
+  const patients = await getPatients(showInactive);
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Patienten</h1>
-        <Link href="/patients/new">
-          <Button>Neuer Patient</Button>
-        </Link>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Patienten</h1>
+          <span className="text-gray-500 text-sm">
+            {patients.length} {showInactive ? 'gesamt' : 'aktiv'}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          {showInactive ? (
+            <Link href="/patients">
+              <Button variant="secondary" size="sm">
+                Nur aktive anzeigen
+              </Button>
+            </Link>
+          ) : (
+            <Link href="/patients?showInactive=true">
+              <Button variant="ghost" size="sm">
+                Inaktive einblenden
+              </Button>
+            </Link>
+          )}
+          <Link href="/patients/new">
+            <Button>Neuer Patient</Button>
+          </Link>
+        </div>
       </div>
 
       <Card padding="none">
@@ -22,20 +48,21 @@ export default async function PatientsPage() {
               <TableHead>Name</TableHead>
               <TableHead>Adresse</TableHead>
               <TableHead>Telefon</TableHead>
-              <TableHead>Bedürfnisse</TableHead>
+              <TableHead>Beduerfnisse</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {patients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center text-gray-500 py-8">
+                <TableCell colSpan={7} className="text-center text-gray-500 py-8">
                   Keine Patienten vorhanden
                 </TableCell>
               </TableRow>
             ) : (
               patients.map((patient) => (
-                <TableRow key={patient.id}>
+                <TableRow key={patient.id} className={!patient.isActive ? 'opacity-60' : ''}>
                   <TableCell className="text-gray-500 text-sm">
                     {patient.patientNumber || '-'}
                   </TableCell>
@@ -53,7 +80,7 @@ export default async function PatientsPage() {
                   </TableCell>
                   <TableCell>{patient.phone}</TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                       {patient.needsWheelchair && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                           Rollstuhl
@@ -73,6 +100,13 @@ export default async function PatientsPage() {
                         <span className="text-gray-400">-</span>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    {patient.isActive ? (
+                      <Badge variant="success">Aktiv</Badge>
+                    ) : (
+                      <Badge variant="danger">Inaktiv</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Link href={`/patients/${patient.id}`}>
