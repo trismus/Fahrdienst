@@ -150,7 +150,7 @@ export async function updatePatient(id: string, input: ZodUpdatePatientInput): P
   if (validatedInput.firstName !== undefined) row.first_name = validatedInput.firstName;
   if (validatedInput.lastName !== undefined) row.last_name = validatedInput.lastName;
   if (validatedInput.dateOfBirth !== undefined) row.date_of_birth = validatedInput.dateOfBirth;
-  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone;
+  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone as string;
   if (validatedInput.email !== undefined) row.email = validatedInput.email;
   if (validatedInput.street !== undefined) row.street = validatedInput.street;
   if (validatedInput.postalCode !== undefined) row.postal_code = validatedInput.postalCode;
@@ -163,7 +163,7 @@ export async function updatePatient(id: string, input: ZodUpdatePatientInput): P
   if (validatedInput.needsWalker !== undefined) row.needs_walker = validatedInput.needsWalker;
   if (validatedInput.needsAssistance !== undefined) row.needs_assistance = validatedInput.needsAssistance;
   if (validatedInput.emergencyContactName !== undefined) row.emergency_contact_name = validatedInput.emergencyContactName;
-  if (validatedInput.emergencyContactPhone !== undefined) row.emergency_contact_phone = validatedInput.emergencyContactPhone;
+  if (validatedInput.emergencyContactPhone !== undefined) row.emergency_contact_phone = validatedInput.emergencyContactPhone as string | null;
   if (validatedInput.notes !== undefined) row.notes = validatedInput.notes;
   if (validatedInput.isActive !== undefined) row.is_active = validatedInput.isActive;
 

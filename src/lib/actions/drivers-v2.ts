@@ -171,7 +171,7 @@ export async function updateDriver(id: string, input: ZodUpdateDriverInput): Pro
   if (validatedInput.driverCode !== undefined) row.driver_code = validatedInput.driverCode;
   if (validatedInput.firstName !== undefined) row.first_name = validatedInput.firstName;
   if (validatedInput.lastName !== undefined) row.last_name = validatedInput.lastName;
-  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone;
+  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone as string;
   if (validatedInput.email !== undefined) row.email = validatedInput.email;
   if (validatedInput.homeCity !== undefined) row.home_city = validatedInput.homeCity;
   if (validatedInput.homeStreet !== undefined) row.home_street = validatedInput.homeStreet;

@@ -175,7 +175,7 @@ export async function updateDestination(id: string, input: ZodUpdateDestinationI
   if (validatedInput.country !== undefined) row.country = validatedInput.country;
   if (validatedInput.latitude !== undefined) row.latitude = validatedInput.latitude;
   if (validatedInput.longitude !== undefined) row.longitude = validatedInput.longitude;
-  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone;
+  if (validatedInput.phone !== undefined) row.phone = validatedInput.phone as string | null;
   if (validatedInput.email !== undefined) row.email = validatedInput.email;
   if (validatedInput.openingHours !== undefined) row.opening_hours = validatedInput.openingHours;
   if (validatedInput.arrivalInstructions !== undefined) row.arrival_instructions = validatedInput.arrivalInstructions;
