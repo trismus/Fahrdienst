@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button, Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui';
 import { getPatients } from '@/lib/actions/patients-v2';
+import { PatientsMap } from '@/components/maps/patients-map';
 
 interface PageProps {
   searchParams: Promise<{ showInactive?: string }>;
@@ -37,6 +38,63 @@ export default async function PatientsPage({ searchParams }: PageProps) {
           <Link href="/patients/new">
             <Button>Neuer Patient</Button>
           </Link>
+        </div>
+      </div>
+
+      {/* Karte: Abholorte */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mb-6">
+        <div className="lg:col-span-3">
+          <Card padding="none" className="overflow-hidden">
+            <div className="px-5 py-3 border-b border-neutral-100 flex items-center justify-between">
+              <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Abholorte</h2>
+              <span className="text-xs text-neutral-400">
+                {patients.filter((p) => p.latitude && p.longitude).length} mit Koordinaten
+              </span>
+            </div>
+            <PatientsMap
+              patients={patients
+                .filter((p) => p.latitude && p.longitude && p.isActive)
+                .map((p) => ({
+                  id: p.id,
+                  name: `${p.firstName} ${p.lastName}`,
+                  address: `${p.street}, ${p.postalCode} ${p.city}`,
+                  lat: p.latitude!,
+                  lng: p.longitude!,
+                }))}
+              className="h-64"
+            />
+          </Card>
+        </div>
+        <div className="lg:col-span-2 flex flex-col gap-4">
+          <Card padding="none">
+            <div className="px-5 py-3 border-b border-neutral-100">
+              <h2 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Zusammenfassung</h2>
+            </div>
+            <div className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-500">Gesamt aktiv</span>
+                <span className="text-sm font-bold text-neutral-900">{patients.filter((p) => p.isActive).length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-400" /> Rollstuhl
+                </span>
+                <span className="text-sm font-bold text-neutral-900">{patients.filter((p) => p.needsWheelchair).length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-green-400" /> Rollator
+                </span>
+                <span className="text-sm font-bold text-neutral-900">{patients.filter((p) => p.needsWalker).length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-neutral-500 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-yellow-400" /> Hilfe nötig
+                </span>
+                <span className="text-sm font-bold text-neutral-900">{patients.filter((p) => p.needsAssistance).length}</span>
+              </div>
+            </div>
+          </Card>
         </div>
       </div>
 
