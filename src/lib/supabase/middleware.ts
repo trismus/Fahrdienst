@@ -7,9 +7,10 @@ type CookieToSet = { name: string; value: string; options?: Partial<ResponseCook
 // Routes that don't require authentication
 const publicRoutes = ['/', '/login'];
 
-// Routes that require specific roles
-const dispatcherRoutes = ['/dashboard', '/rides', '/drivers', '/patients', '/destinations'];
-const driverRoutes = ['/my-rides', '/my-availability'];
+// Routes that require specific roles (for future role-based access)
+// These are defined for documentation purposes and potential future use
+// const dispatcherRoutes = ['/dashboard', '/rides', '/drivers', '/patients', '/destinations'];
+// const driverRoutes = ['/my-rides', '/my-availability'];
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -39,8 +40,8 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Refresh session if expired
-  const { data: { user }, error } = await supabase.auth.getUser();
+  // Refresh session if expired - getUser validates the session
+  const { data: { user } } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
 

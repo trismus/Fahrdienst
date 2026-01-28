@@ -223,7 +223,7 @@ interface DashboardAutoRefreshProps {
   refreshInterval?: number; // milliseconds, 0 to disable
 }
 
-export function DashboardAutoRefresh({ children, refreshInterval = 0 }: DashboardAutoRefreshProps) {
+export function DashboardAutoRefresh({ children }: DashboardAutoRefreshProps) {
   const router = useRouter();
 
   // Real-time subscription handles refresh automatically

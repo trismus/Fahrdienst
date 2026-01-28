@@ -144,7 +144,7 @@ export function LiveActivityFeed({ maxItems = 5 }: LiveActivityFeedProps) {
   const router = useRouter();
   const [events, setEvents] = useState<RideChangeEvent[]>([]);
 
-  const { isConnected, recentChanges } = useDashboardRealtime((event) => {
+  const { isConnected, recentChanges } = useDashboardRealtime(() => {
     // Trigger a page refresh to update stats
     router.refresh();
   });
@@ -207,7 +207,7 @@ interface ActiveRidesCounterProps {
 }
 
 export function ActiveRidesCounter({ initialCount = 0 }: ActiveRidesCounterProps) {
-  const { activeRideCount, isConnected } = useDashboardRealtime();
+  const { activeRideCount } = useDashboardRealtime();
   const [displayCount, setDisplayCount] = useState(initialCount);
   const [isAnimating, setIsAnimating] = useState(false);
 

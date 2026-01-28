@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Input, Card, CardHeader, CardTitle, Badge } from '@/components/ui';
+import { Button, Card, CardHeader, CardTitle, Badge } from '@/components/ui';
 import { createRide, updateRide, cancelRide, type CreateRideInput } from '@/lib/actions/rides-v2';
-import { getDriversWithAvailability, type DriverWithAvailability, type AvailabilityStatus } from '@/lib/actions/drivers-v2';
+import { getDriversWithAvailability, type DriverWithAvailability } from '@/lib/actions/drivers-v2';
 import type { Patient, Destination } from '@/types/database';
-import type { RideWithRelations, RideStatus } from '@/lib/actions/rides-v2';
+import type { RideWithRelations } from '@/lib/actions/rides-v2';
 
 // =============================================================================
 // TYPES
@@ -24,39 +24,6 @@ interface RouteInfo {
   distance: number; // kilometers
   loading: boolean;
   error: string | null;
-}
-
-// =============================================================================
-// AVAILABILITY INDICATOR COMPONENT
-// =============================================================================
-
-function AvailabilityIndicator({ status }: { status: AvailabilityStatus }) {
-  const statusConfig = {
-    available: {
-      color: 'bg-green-500',
-      label: 'Verfuegbar',
-      tooltip: 'Fahrer ist verfuegbar',
-    },
-    busy: {
-      color: 'bg-yellow-500',
-      label: 'Beschaeftigt',
-      tooltip: 'Fahrer hat eine andere Fahrt zur aehnlichen Zeit',
-    },
-    unavailable: {
-      color: 'bg-gray-400',
-      label: 'Nicht verfuegbar',
-      tooltip: 'Fahrer ist abwesend oder hat keine Verfuegbarkeit',
-    },
-  };
-
-  const config = statusConfig[status];
-
-  return (
-    <span
-      className={`inline-block w-3 h-3 rounded-full ${config.color}`}
-      title={config.tooltip}
-    />
-  );
 }
 
 // =============================================================================

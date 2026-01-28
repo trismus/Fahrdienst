@@ -212,9 +212,12 @@ export function useRealtimeRides(options: UseRealtimeRidesOptions = {}): UseReal
   useEffect(() => {
     setupSubscription();
 
+    // Capture the current ref value for cleanup
+    const supabase = supabaseRef.current;
+
     return () => {
       if (channelRef.current) {
-        supabaseRef.current.removeChannel(channelRef.current);
+        supabase.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };
