@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, StatusBadge, Button } from '@/components/ui';
+import { Card, StatusBadge } from '@/components/ui';
 import type { RideWithRelations } from '@/types';
 
 interface RideListProps {
@@ -57,7 +57,6 @@ export function RideList({ rides, emptyMessage = 'Keine Fahrten', linkPrefix = '
   return (
     <div className="space-y-4">
       {Object.entries(groupedRides).map(([dateString, dateRides]) => {
-        const date = new Date(dateString);
         const dateLabel = isToday(dateRides[0].pickup_time)
           ? 'Heute'
           : formatDate(dateRides[0].pickup_time);

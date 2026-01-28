@@ -120,7 +120,7 @@ export function RouteMap({ origin, destination, className = '' }: RouteMapProps)
     return () => {
       mounted = false;
     };
-  }, [origin.lat, origin.lng, destination.lat, destination.lng]);
+  }, [origin, destination]);
 
   if (error) {
     return (

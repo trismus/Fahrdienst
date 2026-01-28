@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Input } from '@/components/ui';
 
 interface AddressAutocompleteProps {
   label?: string;
@@ -110,9 +109,7 @@ export function AddressAutocomplete({
 
   // Sync external value changes
   useEffect(() => {
-    if (value !== inputValue) {
-      setInputValue(value);
-    }
+    setInputValue(value);
   }, [value]);
 
   return (
