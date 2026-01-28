@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { PatientForm } from '@/components/forms';
-import { getPatient } from '@/lib/actions/patients';
+import { getPatientById } from '@/lib/actions/patients-v2';
 
 interface PatientDetailPageProps {
   params: Promise<{ id: string }>;
@@ -8,7 +8,7 @@ interface PatientDetailPageProps {
 
 export default async function PatientDetailPage({ params }: PatientDetailPageProps) {
   const { id } = await params;
-  const patient = await getPatient(id);
+  const patient = await getPatientById(id);
 
   if (!patient) {
     notFound();

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { DestinationForm } from '@/components/forms';
-import { getDestination } from '@/lib/actions/destinations';
+import { getDestinationById } from '@/lib/actions/destinations-v2';
 
 interface DestinationDetailPageProps {
   params: Promise<{ id: string }>;
@@ -8,7 +8,7 @@ interface DestinationDetailPageProps {
 
 export default async function DestinationDetailPage({ params }: DestinationDetailPageProps) {
   const { id } = await params;
-  const destination = await getDestination(id);
+  const destination = await getDestinationById(id);
 
   if (!destination) {
     notFound();
