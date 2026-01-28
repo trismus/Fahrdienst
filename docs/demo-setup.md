@@ -22,7 +22,7 @@ Diese Anleitung beschreibt, wie du eine funktionierende Demo-Umgebung mit Test-U
 | Feld | Wert |
 |------|------|
 | Email | `dispatcher@demo.fahrdienst.ch` |
-| Password | `Demo1234!` |
+| Password | (aus `DEMO_USER_PASSWORD` in `.env.local`) |
 | Auto Confirm User | ✅ Aktivieren |
 
 ### User 2: Fahrer (Driver)
@@ -30,8 +30,13 @@ Diese Anleitung beschreibt, wie du eine funktionierende Demo-Umgebung mit Test-U
 | Feld | Wert |
 |------|------|
 | Email | `fahrer@demo.fahrdienst.ch` |
-| Password | `Demo1234!` |
+| Password | (aus `DEMO_USER_PASSWORD` in `.env.local`) |
 | Auto Confirm User | ✅ Aktivieren |
+
+> **Sicherheitshinweis:** Setze ein sicheres Passwort in `.env.local`:
+> ```
+> DEMO_USER_PASSWORD=DeinSicheresPasswort123!
+> ```
 
 ---
 
@@ -71,7 +76,7 @@ v_driver_user_id UUID := 'DEINE-FAHRER-UUID-HIER';
 1. Öffne die App: `http://localhost:3000`
 2. Melde dich an mit:
    - Email: `dispatcher@demo.fahrdienst.ch`
-   - Password: `Demo1234!`
+   - Password: (dein `DEMO_USER_PASSWORD`)
 3. Du solltest zum **Dashboard** weitergeleitet werden
 4. Du hast Zugriff auf:
    - Patienten, Fahrer, Ziele (CRUD)
@@ -83,7 +88,7 @@ v_driver_user_id UUID := 'DEINE-FAHRER-UUID-HIER';
 1. Melde dich ab (falls eingeloggt)
 2. Melde dich an mit:
    - Email: `fahrer@demo.fahrdienst.ch`
-   - Password: `Demo1234!`
+   - Password: (dein `DEMO_USER_PASSWORD`)
 3. Du solltest zu **Meine Fahrten** weitergeleitet werden
 4. Du hast Zugriff auf:
    - Zugewiesene Fahrten anzeigen
@@ -150,10 +155,12 @@ END $$;
 
 ## Demo-Credentials Übersicht
 
-| Rolle | Email | Password | Zugriff |
-|-------|-------|----------|---------|
-| Dispatcher | `dispatcher@demo.fahrdienst.ch` | `Demo1234!` | Vollzugriff |
-| Fahrer | `fahrer@demo.fahrdienst.ch` | `Demo1234!` | Eigene Fahrten |
+| Rolle | Email | Zugriff |
+|-------|-------|---------|
+| Dispatcher | `dispatcher@demo.fahrdienst.ch` | Vollzugriff |
+| Fahrer | `fahrer@demo.fahrdienst.ch` | Eigene Fahrten |
+
+> **Passwort:** Beide User verwenden das Passwort aus `DEMO_USER_PASSWORD` in `.env.local`
 
 ---
 

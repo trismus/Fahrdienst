@@ -14,22 +14,37 @@ import { createClient } from '@supabase/supabase-js';
 // Load .env.local
 config({ path: '.env.local' });
 
-// Configuration
-const DEMO_USERS = [
-  {
-    email: 'dispatcher@demo.fahrdienst.ch',
-    password: 'Demo1234!',
-    role: 'admin' as const,
-    displayName: 'Demo Dispatcher',
-  },
-  {
-    email: 'fahrer@demo.fahrdienst.ch',
-    password: 'Demo1234!',
-    role: 'driver' as const,
-    displayName: 'Demo Fahrer',
-    linkToDriver: 'TEST-DRV-01', // Will link to this driver_code
-  },
-];
+// SECURITY: Get password from environment variable
+function getDemoPassword(): string {
+  const password = process.env.DEMO_USER_PASSWORD;
+  if (!password) {
+    console.error('❌ DEMO_USER_PASSWORD nicht gesetzt');
+    console.error('   Setze DEMO_USER_PASSWORD in .env.local');
+    console.error('   Beispiel: DEMO_USER_PASSWORD=YourSecurePassword123!');
+    process.exit(1);
+  }
+  return password;
+}
+
+// Configuration - password loaded from environment
+function getDemoUsers() {
+  const password = getDemoPassword();
+  return [
+    {
+      email: 'dispatcher@demo.fahrdienst.ch',
+      password,
+      role: 'admin' as const,
+      displayName: 'Demo Dispatcher',
+    },
+    {
+      email: 'fahrer@demo.fahrdienst.ch',
+      password,
+      role: 'driver' as const,
+      displayName: 'Demo Fahrer',
+      linkToDriver: 'TEST-DRV-01', // Will link to this driver_code
+    },
+  ];
+}
 
 async function main() {
   // Get environment variables
@@ -59,7 +74,8 @@ async function main() {
 
   console.log('🚀 Demo-User Setup gestartet...\n');
 
-  for (const user of DEMO_USERS) {
+  const demoUsers = getDemoUsers();
+  for (const user of demoUsers) {
     console.log(`📧 Erstelle User: ${user.email}`);
 
     // Check if user already exists
@@ -146,11 +162,11 @@ async function main() {
   console.log('');
   console.log('  Dispatcher (Admin):');
   console.log('    Email:    dispatcher@demo.fahrdienst.ch');
-  console.log('    Passwort: Demo1234!');
+  console.log('    Passwort: (aus DEMO_USER_PASSWORD)');
   console.log('');
   console.log('  Fahrer:');
   console.log('    Email:    fahrer@demo.fahrdienst.ch');
-  console.log('    Passwort: Demo1234!');
+  console.log('    Passwort: (aus DEMO_USER_PASSWORD)');
   console.log('');
 }
 

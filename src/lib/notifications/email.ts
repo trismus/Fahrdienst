@@ -143,6 +143,18 @@ async function sendEmail(notification: EmailNotification): Promise<NotificationR
 // =============================================================================
 
 /**
+ * Escapes HTML special characters to prevent XSS/injection attacks
+ */
+function escapeHtml(unsafe: string): string {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * Creates a simple HTML email template
  */
 function createHtmlTemplate(content: {
@@ -157,7 +169,7 @@ function createHtmlTemplate(content: {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${content.heading}</title>
+  <title>${escapeHtml(content.heading)}</title>
   <style>
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
@@ -247,11 +259,11 @@ function createHtmlTemplate(content: {
       <div class="logo">
         <span class="logo-text">Fahrdienst</span>
       </div>
-      <h1>${content.heading}</h1>
+      <h1>${escapeHtml(content.heading)}</h1>
       ${content.body}
       ${content.buttonText && content.buttonUrl ? `
         <div style="text-align: center;">
-          <a href="${content.buttonUrl}" class="button">${content.buttonText}</a>
+          <a href="${escapeHtml(content.buttonUrl)}" class="button">${escapeHtml(content.buttonText)}</a>
         </div>
       ` : ''}
       <div class="footer">
@@ -324,24 +336,24 @@ Dein Fahrdienst-Team
   const html = createHtmlTemplate({
     heading: 'Neue Fahrt zugewiesen',
     body: `
-      <p>Hallo ${data.driverName},</p>
+      <p>Hallo ${escapeHtml(data.driverName)},</p>
       <p>Dir wurde eine neue Fahrt zugewiesen:</p>
       <div class="info-block">
         <div class="info-row">
           <span class="info-label">Patient:</span>
-          <span class="info-value">${data.patientName}</span>
+          <span class="info-value">${escapeHtml(data.patientName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Ziel:</span>
-          <span class="info-value">${data.destinationName}</span>
+          <span class="info-value">${escapeHtml(data.destinationName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Abholzeit:</span>
-          <span class="info-value">${formattedDate} um ${formattedTime}</span>
+          <span class="info-value">${escapeHtml(formattedDate)} um ${escapeHtml(formattedTime)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Abholadresse:</span>
-          <span class="info-value">${data.pickupAddress}</span>
+          <span class="info-value">${escapeHtml(data.pickupAddress)}</span>
         </div>
       </div>
       <p>Bitte bestaetigen oder lehne die Fahrt in der App ab.</p>
@@ -396,21 +408,21 @@ Fahrdienst-System
       <div class="info-block">
         <div class="info-row">
           <span class="info-label">Fahrer:</span>
-          <span class="info-value">${data.driverName}</span>
+          <span class="info-value">${escapeHtml(data.driverName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Patient:</span>
-          <span class="info-value">${data.patientName}</span>
+          <span class="info-value">${escapeHtml(data.patientName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Geplante Abholzeit:</span>
-          <span class="info-value">${formattedDate} um ${formattedTime}</span>
+          <span class="info-value">${escapeHtml(formattedDate)} um ${escapeHtml(formattedTime)}</span>
         </div>
       </div>
       <p>Bitte weise die Fahrt einem anderen Fahrer zu.</p>
     `,
     buttonText: 'Fahrt zuweisen',
-    buttonUrl: `${appUrl}/rides/${data.rideId}`,
+    buttonUrl: `${appUrl}/rides/${escapeHtml(data.rideId)}`,
   });
 
   return sendEmail({
@@ -460,20 +472,20 @@ Dein Fahrdienst-Team
   const html = createHtmlTemplate({
     heading: 'Fahrt bestaetigt',
     body: `
-      <p>Hallo ${driverName},</p>
+      <p>Hallo ${escapeHtml(driverName)},</p>
       <p>Du hast folgende Fahrt bestaetigt:</p>
       <div class="info-block">
         <div class="info-row">
           <span class="info-label">Patient:</span>
-          <span class="info-value">${patientName}</span>
+          <span class="info-value">${escapeHtml(patientName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Ziel:</span>
-          <span class="info-value">${destinationName}</span>
+          <span class="info-value">${escapeHtml(destinationName)}</span>
         </div>
         <div class="info-row">
           <span class="info-label">Abholzeit:</span>
-          <span class="info-value">${formattedDate} um ${formattedTime}</span>
+          <span class="info-value">${escapeHtml(formattedDate)} um ${escapeHtml(formattedTime)}</span>
         </div>
       </div>
       <p style="color: #16a34a; font-weight: 600;">Wir freuen uns auf dich!</p>

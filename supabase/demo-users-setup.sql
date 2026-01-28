@@ -8,10 +8,12 @@
 --    - Go to Authentication → Users → "Add User"
 --    - Create the following users with passwords:
 --
---    | Email                      | Password     | Purpose          |
---    |---------------------------|--------------|------------------|
---    | dispatcher@demo.fahrdienst.ch | Demo1234!    | Dispatcher login |
---    | fahrer@demo.fahrdienst.ch     | Demo1234!    | Driver login     |
+--    | Email                         | Purpose          |
+--    |-------------------------------|------------------|
+--    | dispatcher@demo.fahrdienst.ch | Dispatcher login |
+--    | fahrer@demo.fahrdienst.ch     | Driver login     |
+--
+--    Use a secure password (set DEMO_USER_PASSWORD in .env.local)
 --
 -- 2. Copy the User IDs from the Supabase Dashboard
 -- 3. Replace the placeholder UUIDs below with the actual User IDs

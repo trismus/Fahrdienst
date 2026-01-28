@@ -12,11 +12,18 @@ async function main() {
 
   console.log('🔐 Testing login flow...\n');
 
+  // Get demo password from environment
+  const demoPassword = process.env.DEMO_USER_PASSWORD;
+  if (!demoPassword) {
+    console.log('❌ DEMO_USER_PASSWORD nicht gesetzt in .env.local');
+    process.exit(1);
+  }
+
   // 1. Login as dispatcher
   console.log('1. Signing in as dispatcher...');
   const { data: session, error: loginError } = await supabase.auth.signInWithPassword({
     email: 'dispatcher@demo.fahrdienst.ch',
-    password: 'Demo1234!'
+    password: demoPassword
   });
 
   if (loginError) {

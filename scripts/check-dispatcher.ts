@@ -58,9 +58,14 @@ async function main() {
 
   // 3. Test login
   console.log('\n🔐 Testing login...');
+  const demoPassword = process.env.DEMO_USER_PASSWORD;
+  if (!demoPassword) {
+    console.log('⚠️  DEMO_USER_PASSWORD nicht gesetzt - Login-Test übersprungen');
+    return;
+  }
   const { data: session, error: loginError } = await supabase.auth.signInWithPassword({
     email: 'dispatcher@demo.fahrdienst.ch',
-    password: 'Demo1234!'
+    password: demoPassword
   });
 
   if (loginError) {
