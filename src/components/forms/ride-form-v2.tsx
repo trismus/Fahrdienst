@@ -377,6 +377,7 @@ export function RideFormV2({ ride, patients, destinations, mode = 'create' }: Ri
             value={formData.patientId}
             onChange={handleChange}
             required
+            aria-required={true}
             disabled={!canEdit}
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -402,6 +403,7 @@ export function RideFormV2({ ride, patients, destinations, mode = 'create' }: Ri
             value={formData.destinationId}
             onChange={handleChange}
             required
+            aria-required={true}
             disabled={!canEdit}
             className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600
                      bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -439,6 +441,7 @@ export function RideFormV2({ ride, patients, destinations, mode = 'create' }: Ri
               value={formData.pickupTime}
               onChange={handleChange}
               required
+              aria-required={true}
               disabled={!canEdit}
               className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white
@@ -456,6 +459,7 @@ export function RideFormV2({ ride, patients, destinations, mode = 'create' }: Ri
               value={formData.arrivalTime}
               onChange={handleChange}
               required
+              aria-required={true}
               disabled={!canEdit}
               className="w-full px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600
                        bg-white dark:bg-gray-700 text-gray-900 dark:text-white

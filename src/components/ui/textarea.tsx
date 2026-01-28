@@ -3,10 +3,11 @@ import { TextareaHTMLAttributes, forwardRef } from 'react';
 interface TextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label?: string;
   error?: string;
+  required?: boolean;
 }
 
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ className = '', label, error, id, ...props }, ref) => {
+  ({ className = '', label, error, id, required, ...props }, ref) => {
     const textareaId = id || props.name;
 
     return (
@@ -17,6 +18,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             {label}
+            {required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
         <textarea
@@ -31,6 +33,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
             ${className}
           `}
           rows={3}
+          aria-required={required}
           {...props}
         />
         {error && (

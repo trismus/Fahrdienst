@@ -3,10 +3,11 @@ import { InputHTMLAttributes, forwardRef } from 'react';
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
+  required?: boolean;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ className = '', label, error, id, ...props }, ref) => {
+  ({ className = '', label, error, id, required, ...props }, ref) => {
     const inputId = id || props.name;
 
     return (
@@ -17,6 +18,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             {label}
+            {required && <span className="text-red-500 ml-1">*</span>}
           </label>
         )}
         <input
@@ -30,6 +32,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             ${error ? 'border-red-500' : 'border-gray-300'}
             ${className}
           `}
+          aria-required={required}
           {...props}
         />
         {error && (
