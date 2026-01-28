@@ -4,7 +4,7 @@ import { RideFormV2 } from '@/components/forms/ride-form-v2';
 import { DriverAssignment, RideCancelButton } from '@/components/rides';
 import { RouteMap } from '@/components/maps';
 import { Card, Button, Badge } from '@/components/ui';
-import { getRideById, type RideStatus } from '@/lib/actions/rides-v2';
+import { getRideById, type RideStatus, type RideSubstatus } from '@/lib/actions/rides-v2';
 import { getPatients } from '@/lib/actions/patients-v2';
 import { getDestinations } from '@/lib/actions/destinations-v2';
 
@@ -32,6 +32,44 @@ function StatusBadge({ status }: { status: RideStatus }) {
 
   const { variant, label } = config[status];
   return <Badge variant={variant}>{label}</Badge>;
+}
+
+// =============================================================================
+// SUBSTATUS BADGE COMPONENT
+// =============================================================================
+
+function SubstatusBadge({ substatus }: { substatus: RideSubstatus | null }) {
+  if (!substatus) return null;
+
+  const labels: Record<RideSubstatus, string> = {
+    waiting: 'Warten auf Start',
+    en_route_pickup: 'Auf dem Weg zur Abholung',
+    at_pickup: 'Bei Patient',
+    en_route_destination: 'Auf dem Weg zum Ziel',
+    at_destination: 'Am Ziel angekommen',
+    completed: 'Abgeschlossen',
+  };
+
+  return (
+    <span className="text-sm text-gray-500 dark:text-gray-400">
+      ({labels[substatus]})
+    </span>
+  );
+}
+
+// =============================================================================
+// TIMESTAMP FORMATTER
+// =============================================================================
+
+function formatTimestamp(isoString: string | null): string {
+  if (!isoString) return '-';
+  return new Date(isoString).toLocaleString('de-CH', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 // =============================================================================
@@ -98,6 +136,7 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
             Fahrt Details
           </h1>
           <StatusBadge status={ride.status} />
+          <SubstatusBadge substatus={ride.substatus} />
         </div>
         <div className="flex items-center gap-2">
           <RideCancelButton rideId={ride.id} rideStatus={ride.status} />
@@ -371,6 +410,71 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
               <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
                 {ride.notes}
               </p>
+            </Card>
+          )}
+
+          {/* Execution Timestamps Card - Show when ride has any execution data */}
+          {(ride.startedAt || ride.pickedUpAt || ride.arrivedAt || ride.completedAt) && (
+            <Card className={`p-6 ${
+              ride.status === 'in_progress'
+                ? 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/10'
+                : ride.status === 'completed'
+                ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10'
+                : ''
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className={`text-lg font-semibold ${
+                  ride.status === 'in_progress'
+                    ? 'text-purple-700 dark:text-purple-400'
+                    : ride.status === 'completed'
+                    ? 'text-green-700 dark:text-green-400'
+                    : 'text-gray-900 dark:text-white'
+                }`}>
+                  Fahrtdurchfuehrung
+                </h2>
+                {ride.status === 'in_progress' && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400">LIVE</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Gestartet</p>
+                    <p className={`font-medium ${ride.startedAt ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                      {formatTimestamp(ride.startedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Abgeholt</p>
+                    <p className={`font-medium ${ride.pickedUpAt ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                      {formatTimestamp(ride.pickedUpAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Angekommen</p>
+                    <p className={`font-medium ${ride.arrivedAt ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>
+                      {formatTimestamp(ride.arrivedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Abgeschlossen</p>
+                    <p className={`font-medium ${ride.completedAt ? 'text-green-600' : 'text-gray-400'}`}>
+                      {formatTimestamp(ride.completedAt)}
+                    </p>
+                  </div>
+                </div>
+                {ride.status === 'completed' && ride.startedAt && ride.completedAt && (
+                  <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Gesamtdauer</p>
+                    <p className="font-semibold text-green-600">
+                      {Math.round((new Date(ride.completedAt).getTime() - new Date(ride.startedAt).getTime()) / 60000)} Minuten
+                    </p>
+                  </div>
+                )}
+              </div>
             </Card>
           )}
 

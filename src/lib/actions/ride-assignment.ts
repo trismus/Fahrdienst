@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { validateId } from '@/lib/utils/sanitize';
 import { notifyDriverOfRideAssignment } from '@/lib/notifications';
+import { notifyRideAssigned, isSmsEnabled, isValidPhoneNumber } from '@/lib/sms';
 
 // =============================================================================
 // TYPES
@@ -13,6 +14,8 @@ export interface AssignDriverResult {
   success: boolean;
   message: string;
   notificationSent: boolean;
+  smsNotificationSent?: boolean;
+  emailNotificationSent?: boolean;
 }
 
 // =============================================================================
@@ -73,10 +76,10 @@ export async function assignDriverWithNotification(
     };
   }
 
-  // Get driver details
+  // Get driver details (including phone for SMS)
   const { data: driver, error: driverError } = await supabase
     .from('drivers')
-    .select('id, first_name, last_name, email, is_active')
+    .select('id, first_name, last_name, email, phone, is_active')
     .eq('id', validDriverId)
     .single();
 
@@ -110,42 +113,68 @@ export async function assignDriverWithNotification(
     };
   }
 
-  // Send notification (fire and forget - don't fail if notification fails)
-  let notificationSent = false;
+  // Prepare notification data
+  // Supabase returns patient and destination as objects when using .single()
+  // Cast through unknown to satisfy TypeScript
+  const patient = ride.patient as unknown as {
+    first_name: string;
+    last_name: string;
+    street: string;
+    postal_code: string;
+    city: string;
+  };
+  const destination = ride.destination as unknown as { name: string };
+
+  const pickupAddress = [
+    patient.street,
+    `${patient.postal_code} ${patient.city}`.trim(),
+  ].filter(Boolean).join(', ');
+
+  const driverName = `${driver.first_name} ${driver.last_name}`;
+  const patientName = `${patient.first_name} ${patient.last_name}`;
+
+  // Track notification status
+  let smsNotificationSent = false;
+  let emailNotificationSent = false;
+
+  // Try SMS first (primary notification method)
+  // The notifyRideAssigned function loads ride data from DB, so we just pass the rideId
+  if (isSmsEnabled() && driver.phone && isValidPhoneNumber(driver.phone)) {
+    try {
+      const smsResult = await notifyRideAssigned(validRideId);
+
+      smsNotificationSent = smsResult.success;
+
+      if (!smsResult.success && smsResult.errors.length > 0) {
+        console.warn('SMS notification failed:', smsResult.errors);
+      }
+    } catch (error) {
+      console.error('Failed to send SMS notification:', error);
+      // Continue to email fallback
+    }
+  }
+
+  // Send email notification (as fallback or in addition to SMS)
   if (driver.email) {
     try {
-      // Supabase returns patient and destination as objects when using .single()
-      // Cast through unknown to satisfy TypeScript
-      const patient = ride.patient as unknown as {
-        first_name: string;
-        last_name: string;
-        street: string;
-        postal_code: string;
-        city: string;
-      };
-      const destination = ride.destination as unknown as { name: string };
-
-      const pickupAddress = [
-        patient.street,
-        `${patient.postal_code} ${patient.city}`.trim(),
-      ].filter(Boolean).join(', ');
-
-      const result = await notifyDriverOfRideAssignment({
+      const emailResult = await notifyDriverOfRideAssignment({
         driverEmail: driver.email,
-        driverName: `${driver.first_name} ${driver.last_name}`,
-        patientName: `${patient.first_name} ${patient.last_name}`,
+        driverName,
+        patientName,
         destinationName: destination.name,
         pickupTime: ride.pickup_time,
         pickupAddress,
         rideId: validRideId,
       });
 
-      notificationSent = result.success;
+      emailNotificationSent = emailResult.success;
     } catch (error) {
-      console.error('Failed to send assignment notification:', error);
+      console.error('Failed to send email notification:', error);
       // Don't fail the assignment if notification fails
     }
   }
+
+  const anyNotificationSent = smsNotificationSent || emailNotificationSent;
 
   // Revalidate paths
   revalidatePath('/rides');
@@ -153,12 +182,24 @@ export async function assignDriverWithNotification(
   revalidatePath('/dashboard');
   revalidatePath('/my-rides');
 
+  // Build appropriate message
+  let message = 'Fahrer zugewiesen';
+  if (smsNotificationSent && emailNotificationSent) {
+    message = 'Fahrer zugewiesen und per SMS & Email benachrichtigt';
+  } else if (smsNotificationSent) {
+    message = 'Fahrer zugewiesen und per SMS benachrichtigt';
+  } else if (emailNotificationSent) {
+    message = 'Fahrer zugewiesen und per Email benachrichtigt';
+  } else {
+    message = 'Fahrer zugewiesen (keine Benachrichtigung gesendet)';
+  }
+
   return {
     success: true,
-    message: notificationSent
-      ? 'Fahrer zugewiesen und benachrichtigt'
-      : 'Fahrer zugewiesen (keine Benachrichtigung gesendet)',
-    notificationSent,
+    message,
+    notificationSent: anyNotificationSent,
+    smsNotificationSent,
+    emailNotificationSent,
   };
 }
 

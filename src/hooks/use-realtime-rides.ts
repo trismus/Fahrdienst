@@ -44,6 +44,8 @@ interface UseRealtimeRidesOptions {
   onRideChange?: (event: RideChangeEvent) => void;
   /** Enable/disable the subscription */
   enabled?: boolean;
+  /** Polling interval in milliseconds for fallback when realtime fails (default: 30000) */
+  pollingInterval?: number;
 }
 
 interface UseRealtimeRidesReturn {
@@ -107,8 +109,17 @@ function transformRideRow(row: RideRow): RealtimeRide {
 // HOOK
 // =============================================================================
 
+const DEFAULT_POLLING_INTERVAL = 30000;
+
 export function useRealtimeRides(options: UseRealtimeRidesOptions = {}): UseRealtimeRidesReturn {
-  const { date, driverId, statuses, onRideChange, enabled = true } = options;
+  const {
+    date,
+    driverId,
+    statuses,
+    onRideChange,
+    enabled = true,
+    pollingInterval = DEFAULT_POLLING_INTERVAL,
+  } = options;
 
   const [isConnected, setIsConnected] = useState(false);
   const [recentChanges, setRecentChanges] = useState<RideChangeEvent[]>([]);
@@ -117,6 +128,8 @@ export function useRealtimeRides(options: UseRealtimeRidesOptions = {}): UseReal
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabaseRef = useRef(createClient());
   const onRideChangeRef = useRef(onRideChange);
+  const pollingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastKnownRidesRef = useRef<Map<string, RideRow>>(new Map());
 
   // Keep callback ref updated
   useEffect(() => {
@@ -223,32 +236,117 @@ export function useRealtimeRides(options: UseRealtimeRidesOptions = {}): UseReal
     };
   }, [setupSubscription]);
 
-  // Fetch initial active ride count
+  // Fetch rides and detect changes (for both initial load and polling)
+  const fetchRidesAndDetectChanges = useCallback(async () => {
+    let query = supabaseRef.current
+      .from('rides')
+      .select('id, patient_id, driver_id, destination_id, pickup_time, arrival_time, return_time, status, substatus, started_at, picked_up_at, arrived_at, completed_at, updated_at');
+
+    if (date) {
+      const startOfDay = `${date}T00:00:00`;
+      const endOfDay = `${date}T23:59:59`;
+      query = query.gte('pickup_time', startOfDay).lte('pickup_time', endOfDay);
+    }
+
+    if (driverId) {
+      query = query.eq('driver_id', driverId);
+    }
+
+    if (statuses && statuses.length > 0) {
+      query = query.in('status', statuses);
+    }
+
+    const { data, error } = await query;
+
+    if (error || !data) return;
+
+    // Calculate active ride count
+    const activeCount = data.filter((r) => r.status === 'in_progress').length;
+    setActiveRideCount(activeCount);
+
+    // Detect changes compared to last known state
+    const currentRides = new Map<string, RideRow>();
+    for (const row of data) {
+      currentRides.set(row.id, row as RideRow);
+
+      const lastKnown = lastKnownRidesRef.current.get(row.id);
+      if (!lastKnown) {
+        // New ride (INSERT)
+        const event: RideChangeEvent = {
+          type: 'INSERT',
+          ride: transformRideRow(row as RideRow),
+          timestamp: new Date(),
+        };
+        setRecentChanges((prev) => [event, ...prev].slice(0, 10));
+        if (onRideChangeRef.current) {
+          onRideChangeRef.current(event);
+        }
+      } else if (lastKnown.updated_at !== row.updated_at) {
+        // Updated ride (UPDATE)
+        const event: RideChangeEvent = {
+          type: 'UPDATE',
+          ride: transformRideRow(row as RideRow),
+          oldRide: transformRideRow(lastKnown),
+          timestamp: new Date(),
+        };
+        setRecentChanges((prev) => [event, ...prev].slice(0, 10));
+        if (onRideChangeRef.current) {
+          onRideChangeRef.current(event);
+        }
+      }
+    }
+
+    // Detect deleted rides
+    for (const [id, oldRow] of lastKnownRidesRef.current) {
+      if (!currentRides.has(id)) {
+        const event: RideChangeEvent = {
+          type: 'DELETE',
+          ride: transformRideRow(oldRow),
+          timestamp: new Date(),
+        };
+        setRecentChanges((prev) => [event, ...prev].slice(0, 10));
+        if (onRideChangeRef.current) {
+          onRideChangeRef.current(event);
+        }
+      }
+    }
+
+    // Update last known state
+    lastKnownRidesRef.current = currentRides;
+  }, [date, driverId, statuses]);
+
+  // Fetch initial data and set up active ride count
   useEffect(() => {
     if (!enabled) return;
+    fetchRidesAndDetectChanges();
+  }, [enabled, fetchRidesAndDetectChanges]);
 
-    const fetchActiveCount = async () => {
-      let query = supabaseRef.current
-        .from('rides')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'in_progress');
+  // Fallback polling when realtime is not connected
+  useEffect(() => {
+    if (!enabled || pollingInterval <= 0) return;
 
-      if (date) {
-        const startOfDay = `${date}T00:00:00`;
-        const endOfDay = `${date}T23:59:59`;
-        query = query.gte('pickup_time', startOfDay).lte('pickup_time', endOfDay);
+    // Clear any existing timer
+    if (pollingTimerRef.current) {
+      clearInterval(pollingTimerRef.current);
+      pollingTimerRef.current = null;
+    }
+
+    // Only poll if not connected via realtime
+    if (!isConnected) {
+      console.log('[Realtime] Falling back to polling every', pollingInterval, 'ms');
+      pollingTimerRef.current = setInterval(() => {
+        fetchRidesAndDetectChanges();
+      }, pollingInterval);
+    }
+
+    return () => {
+      if (pollingTimerRef.current) {
+        clearInterval(pollingTimerRef.current);
+        pollingTimerRef.current = null;
       }
-
-      if (driverId) {
-        query = query.eq('driver_id', driverId);
-      }
-
-      const { count } = await query;
-      setActiveRideCount(count || 0);
     };
-
-    fetchActiveCount();
-  }, [enabled, date, driverId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, isConnected, fetchRidesAndDetectChanges]);
 
   const clearChanges = useCallback(() => {
     setRecentChanges([]);
