@@ -1,0 +1,385 @@
+================================================================================
+FAHRDIENST WIKI - VOLLSTÄNDIGER INDEX
+================================================================================
+
+Datum:      28. Januar 2026
+Status:     FERTIGGESTELLT & PRODUKTIONSREIF
+Umfang:     10 Markdown-Dateien, 3.427 Zeilen, 112 KB
+Sprache:    Deutsch (primär) + englische Code-Beispiele
+
+================================================================================
+WIKI-SEITEN (/wiki/ VERZEICHNIS)
+================================================================================
+
+1. 00-Home.md (198 Zeilen)
+   ├─ Überblick & Features (Status-Matrix)
+   ├─ Core Concepts (Rollen, Status, Entities, Tech Stack)
+   ├─ Schnelleinstieg (Links für jede Rolle)
+   ├─ Dokumentations-Index
+   ├─ Häufige Links & Navigation
+   └─ Zielgruppe: Alle (Start here)
+
+2. 01-Installation.md (321 Zeilen)
+   ├─ Voraussetzungen (Node, npm, Git, Accounts)
+   ├─ Repository klonen
+   ├─ Dependencies installieren
+   ├─ Environment Variables konfigurieren
+   ├─ API-Keys beschaffen (Supabase, Google Maps, Twilio)
+   ├─ Datenbank-Schema initialisieren
+   ├─ Dev-Server starten
+   ├─ Test-Account anlegen
+   ├─ Stammdaten hinzufügen
+   ├─ Build & Production Testing
+   ├─ Häufige Probleme & Lösungen
+   └─ Zielgruppe: Developer (Setup)
+
+3. 02-Quick-Start.md (192 Zeilen)
+   ├─ TL;DR (5 Befehle)
+   ├─ Minimale Environment
+   ├─ Was funktioniert lokal (Feature-Matrix)
+   ├─ npm Befehle Übersicht
+   ├─ Struktur erkunden
+   ├─ Testdaten hinzufügen (SQL)
+   ├─ Debugging
+   └─ Zielgruppe: Developer (Schnell)
+
+4. 03-Dispatcher-Guide.md (396 Zeilen)
+   ├─ Überblick & Login
+   ├─ Dashboard erklärt
+   ├─ Stammdaten verwalten
+   │  ├─ Patienten (CRUD)
+   │  ├─ Fahrer (CRUD + Verfügbarkeit)
+   │  └─ Ziele (CRUD)
+   ├─ Fahrten verwalten
+   │  ├─ Fahrt anlegen (detailliert)
+   │  ├─ Fahrt bearbeiten
+   │  ├─ Fahrt stornieren
+   │  └─ Fahrer zuweisen/austauschen
+   ├─ Kalender nutzen
+   ├─ Benachrichtigungen & Status
+   ├─ Häufige Aufgaben (3 Szenarien)
+   ├─ Tipps & Tricks
+   └─ Zielgruppe: Dispatcher/Enduser (How-To)
+
+4. 04-Driver-Guide.md (291 Zeilen)
+   ├─ Überblick & Login
+   ├─ Fahrten-Übersicht
+   ├─ Fahrt bestätigen/ablehnen
+   ├─ Fahrt durchführen (Status-Updates)
+   ├─ Verfügbarkeit verwalten (Grid)
+   ├─ Abwesenheiten verwalten
+   ├─ Benachrichtigungen
+   ├─ Tipps & Tricks
+   ├─ Häufige Fragen (FAQ)
+   ├─ Sicherheit & Datenschutz
+   └─ Zielgruppe: Fahrer/Enduser (How-To)
+
+5. 05-Developer-Guide.md (637 Zeilen)
+   ├─ Überblick (Diagram)
+   ├─ Tech Stack (vollständig mit Versionen)
+   ├─ Projekt-Struktur (detailliert)
+   ├─ Key Components
+   │  ├─ Server Actions (V2 mit Security)
+   │  ├─ Maps Components
+   │  ├─ Calendar Component
+   │  ├─ Availability Grid
+   │  └─ Real-time Hook
+   ├─ Database Schema (Überblick)
+   ├─ Validierung & Security
+   │  ├─ Input Validation (Zod)
+   │  ├─ SQL Injection Prevention
+   │  └─ Rate Limiting
+   ├─ API Routes
+   ├─ Real-time Subscriptions
+   ├─ SMS Integration (Twilio)
+   ├─ Development Workflow
+   ├─ Debugging
+   ├─ Performance Optimization
+   ├─ Häufige Tasks
+   └─ Zielgruppe: Developer (Tech)
+
+6. 06-Architecture.md (624 Zeilen)
+   ├─ System Architecture (Diagram)
+   ├─ Data Model
+   │  ├─ Entity Relationship Diagram (ERD)
+   │  ├─ Ride Timestamps (Timeline)
+   │  └─ Core Entities (TypeScript)
+   ├─ Status Flow & State Machine (visuell)
+   ├─ API Communication (Pattern)
+   ├─ Real-time Subscription (Pattern)
+   ├─ Authentication & Authorization
+   │  ├─ JWT Flow
+   │  └─ RLS Policies (SQL)
+   ├─ Notification Flow
+   ├─ Route Calculation Flow
+   ├─ Scalability Considerations
+   ├─ Security Considerations (Defense in Depth)
+   ├─ Monitoring & Observability
+   ├─ Future Enhancements
+   └─ Zielgruppe: Developer (Architektur)
+
+7. 07-Deployment.md (505 Zeilen)
+   ├─ Überblick (Vercel + Supabase)
+   ├─ Pre-Deployment Checklist
+   ├─ Schritt-für-Schritt Deployment
+   │  ├─ Supabase Production Setup
+   │  ├─ Environment Variables in Vercel
+   │  ├─ Custom Domain
+   │  ├─ Monitoring & Logging
+   │  ├─ Database Backups
+   │  └─ Production Checklist
+   ├─ Skalierung & Performance
+   ├─ Troubleshooting (häufige Fehler)
+   ├─ Continuous Deployment (CI/CD)
+   ├─ Rollback Strategien
+   ├─ Production Monitoring
+   ├─ Secrets Management
+   ├─ Performance Optimization
+   ├─ Cost Optimization
+   ├─ Disaster Recovery Plan
+   └─ Zielgruppe: DevOps/Operations
+
+8. README.md (232 Zeilen)
+   ├─ Schnelle Navigation
+   ├─ Wiki-Struktur (Tabelle)
+   ├─ Wichtigste Konzepte
+   ├─ Entwicklungs-Status
+   ├─ Häufige Fragen
+   ├─ Contribution Guide
+   ├─ Externe Ressourcen
+   ├─ Team & Support
+   ├─ Projekt-Struktur
+   ├─ Version History
+   └─ Zielgruppe: Alle (Navigation)
+
+9. _SIDEBAR.md (31 Zeilen)
+   ├─ GitHub Wiki Navigation
+   ├─ Link-Struktur
+   ├─ Version & Status
+   └─ Zielgruppe: Navigation
+
+================================================================================
+ZUSÄTZLICHE DATEIEN
+================================================================================
+
+WIKI-SETUP.md (Root-Verzeichnis)
+   ├─ Fertigstellungsbericht
+   ├─ Dokumentations-Übersicht
+   ├─ Integration mit /docs/
+   ├─ Zielgruppen-Mapping
+   ├─ Nächste Schritte
+   └─ Zielgruppe: Projektmanagement
+
+WIKI-INDEX.txt (Diese Datei)
+   ├─ Vollständiger Index
+   ├─ Inhaltsübersicht
+   └─ Zielgruppe: Navigation
+
+================================================================================
+INTEGRATION MIT BESTEHENDER DOKUMENTATION
+================================================================================
+
+Das Wiki integriert sich mit:
+
+/docs/README.md
+   → Hauptdokumentation und Index
+   → Workflow Canvas Index
+   → Sprint Backlog Index
+
+/docs/workflow-canvas.md
+   → VERBINDLICHE Quelle für alle Requirements
+   → 10 Kern-Workflows
+   → Product Decisions
+
+/docs/sprint-backlog.md
+   → Detaillierte User Stories
+   → Acceptance Criteria
+   → Technical Implementation Notes
+
+/docs/roadmap.md
+   → Release Planning
+   → Milestones
+   → Decision Log
+
+/docs/test-plan.md
+   → Test Scenarios
+   → Security Tests
+   → Performance Tests
+
+/CLAUDE.md
+   → Developer Context für AI
+   → Tech Stack Overview
+   → Codebase Structure
+
+/supabase/schema.sql
+   → Database DDL
+   → Table Definitions
+   → Constraints
+
+/supabase/rls-policies.sql
+   → Row-Level Security Policies
+
+/src/
+   → Application Source Code
+   → Components
+   → Server Actions
+   → Types
+
+================================================================================
+LESEREIHENFOLGE NACH ROLLE
+================================================================================
+
+DISPATCHER (Enduser)
+   1. /wiki/00-Home.md (5 min)
+   2. /wiki/03-Dispatcher-Guide.md (20 min)
+   3. /docs/workflow-canvas.md (30 min bei Bedarf)
+   Total: 55 min
+
+FAHRER (Enduser)
+   1. /wiki/00-Home.md (5 min)
+   2. /wiki/04-Driver-Guide.md (15 min)
+   Total: 20 min
+
+DEVELOPER (Quick)
+   1. /wiki/02-Quick-Start.md (5 min)
+   2. npm install → npm run dev
+   3. Explore codebase
+   Total: 20 min
+
+DEVELOPER (Setup)
+   1. /wiki/01-Installation.md (30 min)
+   2. /wiki/05-Developer-Guide.md (30 min)
+   Total: 60 min
+
+DEVELOPER (Deep Dive)
+   1. /wiki/05-Developer-Guide.md (30 min)
+   2. /wiki/06-Architecture.md (45 min)
+   3. /docs/workflow-canvas.md (30 min)
+   4. /CLAUDE.md (20 min)
+   5. Explore /src/ codebase
+   Total: 3 hours
+
+DEVOPS/OPERATIONS
+   1. /wiki/07-Deployment.md (60 min)
+   2. /wiki/05-Developer-Guide.md für Context (20 min)
+   3. Setup own infrastructure
+   Total: 2+ hours
+
+MANAGEMENT
+   1. /wiki/00-Home.md (5 min)
+   2. /docs/roadmap.md (15 min)
+   3. /docs/executive-summary.md (10 min)
+   Total: 30 min
+
+================================================================================
+DATEI-INHALTS-MATRIX
+================================================================================
+
+Seite                   | Installer | Stammdaten | Fahrt | Fahrer | Verfügbar | Benachricht | Developer | Archit | Deploy
+00-Home                 |     ✓      |            |       |        |           |             |     ✓     |        |
+01-Installation         |     ✓      |            |       |        |           |             |     ✓     |        |
+02-Quick-Start          |     ✓      |            |       |        |           |             |     ✓     |        |
+03-Dispatcher-Guide     |            |     ✓      |   ✓   |    ✓   |     ✓     |      ✓      |           |        |
+04-Driver-Guide         |            |            |   ✓   |        |     ✓     |      ✓      |           |        |
+05-Developer-Guide      |            |            |       |        |           |             |     ✓     |   ✓    |
+06-Architecture         |            |            |       |        |           |             |     ✓     |   ✓    |
+07-Deployment           |            |            |       |        |           |             |           |        |    ✓
+
+================================================================================
+HÄUFIG VERWENDETE BEGRIFFE
+================================================================================
+
+Fahrt (Ride)            = Patientenfahrt von A nach B
+Dispatcher (Admin)      = Disponent, Fahrtplaner
+Fahrer (Driver)         = Taxifahrer, Transporteur
+Destination (Ziel)      = Zielort (Spital, Praxis, etc.)
+Patient                 = Fahrgast, Person
+Status                  = planned, confirmed, in_progress, completed, cancelled
+Verfügbarkeit           = Availability, Zeitblöcke Mo-Fr
+Abwesenheit             = Absence, Urlaub, Krankheit
+Benachrichtigung         = Notification, Email/SMS
+Server Actions          = Next.js Server Actions mit Zod Validation
+RLS                     = Row-Level Security (Datenbank)
+
+================================================================================
+TECHNISCHE SPEZIFIKATIONEN
+================================================================================
+
+Zeilen insgesamt:       3.427
+Dateien:                10
+Durchschnitt/Seite:     342 Zeilen
+Größe insgesamt:        112 KB
+Durchschnitt/Seite:     11 KB
+
+Code-Beispiele:         30+
+Diagramme (ASCII):      8
+Tabellen:               20+
+Links:                  100+
+Kopf-Bilder:           Keine (Text-based nur)
+
+Sprache:                Deutsch 95%, Englisch 5% (Code)
+Kompatibilität:        GitHub Markdown, GitHub Wiki
+
+================================================================================
+WARTUNGS-ZEITPLAN
+================================================================================
+
+Nach jedem Sprint:
+   ✓ 05-Developer-Guide.md - neue Components/Features?
+   ✓ 03-Dispatcher-Guide.md - neue UI?
+   ✓ 04-Driver-Guide.md - neue Fahrer-Features?
+
+Vor Launch:
+   ✓ 07-Deployment.md - echte URLs eintragen
+   ✓ Alle Links prüfen
+   ✓ Team-Feedback sammeln
+
+Nach Launch:
+   ✓ Wöchentlich: Typos, Fehler beheben
+   ✓ Monatlich: Performance-Updates hinzufügen
+   ✓ Quartal: Major Overwrites?
+
+================================================================================
+ERFOLGS-METRIKEN
+================================================================================
+
+Das Wiki ist erfolgreich wenn:
+   ✓ Neue Developer brauchen 01-Installation.md nur 1x
+   ✓ Dispatcher-Team braucht 03-Dispatcher-Guide.md < 2h
+   ✓ Fahrer-Training nutzt 04-Driver-Guide.md
+   ✓ Developers referenzieren 05-06-Developer-Guide.md bei technischen Q
+   ✓ Niemand fragt mehr "Wie mache ich X?" → Es steht im Wiki
+   ✓ Support-Tickets reduzieren sich
+   ✓ Zeit zum Onboarding sinkt
+
+================================================================================
+GESCHÄFTLICHER WERT
+================================================================================
+
+- Reduziert Onboarding-Zeit für neue Team-Mitglieder
+- Ermöglicht Self-Service für häufige Fragen
+- Dokumentiert Prozesse (reduziert Wissens-Abhängigkeit)
+- Verbessert Quality durch zentrale Quelle der Wahrheit
+- Unterstützt Support-Team mit strukturiertem Wissen
+- Macht Projekt wartbarer & transferierbar
+
+================================================================================
+ABSCHLUSS
+================================================================================
+
+Die Fahrdienst Wiki-Dokumentation ist FERTIGGESTELLT und PRODUKTIONSREIF.
+
+Sie können sofort:
+   1. Mit dem Team geteilt werden
+   2. Im GitHub Wiki hochgeladen werden
+   3. Im Repo als /wiki/ Verzeichnis gepflegt werden
+   4. Bei neuen Features aktualisiert werden
+   5. Für Training/Onboarding verwendet werden
+
+Status: ✅ PRODUCTION READY
+
+Erstellt:    28. Januar 2026
+Von:         Silke (Senior Documentation Specialist)
+Für:         Fahrdienst-Team
+
+================================================================================
