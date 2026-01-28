@@ -376,14 +376,18 @@ function MonthView({
             <div className={`text-sm font-medium mb-1 ${isSameDay(day, today) ? 'text-blue-600' : ''}`}>
               {day.getDate()}
             </div>
-            {dayRides.slice(0, 2).map((ride) => (
-              <div
-                key={ride.id}
-                className="text-xs truncate px-1 py-0.5 mb-0.5 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200"
-              >
-                {formatTime(ride.pickup_time)} {ride.patient?.name}
-              </div>
-            ))}
+            {dayRides.slice(0, 2).map((ride) => {
+              const colors = STATUS_COLORS[ride.status] || STATUS_COLORS.planned;
+              return (
+                <Link
+                  key={ride.id}
+                  href={`/rides/${ride.id}`}
+                  className={`block text-xs truncate px-1 py-0.5 mb-0.5 rounded ${colors.bg} ${colors.text} ${colors.hover}`}
+                >
+                  {formatTime(ride.pickup_time)} {ride.patient?.name}
+                </Link>
+              );
+            })}
             {dayRides.length > 2 && (
               <div className="text-xs text-gray-500">+{dayRides.length - 2}</div>
             )}
@@ -394,15 +398,51 @@ function MonthView({
   );
 }
 
+// Status-based color mapping for ride cards
+const STATUS_COLORS = {
+  planned: {
+    bg: 'bg-gray-50 dark:bg-gray-800/50',
+    hover: 'hover:bg-gray-100 dark:hover:bg-gray-800',
+    border: 'border-gray-200 dark:border-gray-700',
+    text: 'text-gray-700 dark:text-gray-300',
+  },
+  confirmed: {
+    bg: 'bg-blue-50 dark:bg-blue-900/30',
+    hover: 'hover:bg-blue-100 dark:hover:bg-blue-900/50',
+    border: 'border-blue-200 dark:border-blue-800',
+    text: 'text-blue-700 dark:text-blue-300',
+  },
+  in_progress: {
+    bg: 'bg-yellow-50 dark:bg-yellow-900/30',
+    hover: 'hover:bg-yellow-100 dark:hover:bg-yellow-900/50',
+    border: 'border-yellow-200 dark:border-yellow-800',
+    text: 'text-yellow-700 dark:text-yellow-300',
+  },
+  completed: {
+    bg: 'bg-green-50 dark:bg-green-900/30',
+    hover: 'hover:bg-green-100 dark:hover:bg-green-900/50',
+    border: 'border-green-200 dark:border-green-800',
+    text: 'text-green-700 dark:text-green-300',
+  },
+  cancelled: {
+    bg: 'bg-red-50 dark:bg-red-900/30',
+    hover: 'hover:bg-red-100 dark:hover:bg-red-900/50',
+    border: 'border-red-200 dark:border-red-800',
+    text: 'text-red-700 dark:text-red-300',
+  },
+} as const;
+
 function RideCard({ ride, compact = false }: { ride: RideWithRelations; compact?: boolean }) {
+  const colors = STATUS_COLORS[ride.status] || STATUS_COLORS.planned;
+
   if (compact) {
     return (
       <Link
         href={`/rides/${ride.id}`}
-        className="block p-1.5 mb-1 rounded text-xs bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors"
+        className={`block p-1.5 mb-1 rounded text-xs ${colors.bg} ${colors.hover} transition-colors`}
       >
         <div className="flex items-center justify-between">
-          <span className="font-medium">{formatTime(ride.pickup_time)}</span>
+          <span className={`font-medium ${colors.text}`}>{formatTime(ride.pickup_time)}</span>
           <StatusBadge status={ride.status} />
         </div>
         <div className="truncate text-gray-600 dark:text-gray-400">
@@ -420,10 +460,10 @@ function RideCard({ ride, compact = false }: { ride: RideWithRelations; compact?
   return (
     <Link
       href={`/rides/${ride.id}`}
-      className="block p-3 mb-2 rounded-lg border hover:shadow-md transition-shadow"
+      className={`block p-3 mb-2 rounded-lg border ${colors.bg} ${colors.hover} ${colors.border} transition-shadow hover:shadow-md`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="font-medium">{formatTime(ride.pickup_time)}</span>
+        <span className={`font-medium ${colors.text}`}>{formatTime(ride.pickup_time)}</span>
         <StatusBadge status={ride.status} />
       </div>
       <div className="text-sm">
