@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Card, CardHeader, CardTitle, Badge } from '@/components/ui';
+import { Button, Card } from '@/components/ui';
 import { getDriverById, getDriverAbsences } from '@/lib/actions/drivers-v2';
+import { DriverAbsenceList } from '@/components/availability/driver-absence-list';
 
 // =============================================================================
 // TYPES
@@ -14,15 +15,6 @@ interface AbsencesPageProps {
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString('de-CH', {
-    weekday: 'short',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-}
 
 function getDuration(fromDate: string, toDate: string): number {
   const from = new Date(fromDate);
@@ -126,85 +118,8 @@ export default async function DriverAbsencesPage({ params }: AbsencesPageProps) 
         </Card>
       </div>
 
-      {/* Current Absences */}
-      {currentAbsences.length > 0 && (
-        <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <CardTitle className="text-red-700 dark:text-red-400">Aktuell abwesend</CardTitle>
-            </div>
-          </CardHeader>
-          <div className="space-y-3">
-            {currentAbsences.map((absence) => (
-              <AbsenceCard key={absence.id} absence={absence} variant="current" />
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Upcoming Absences */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Geplante Abwesenheiten</CardTitle>
-          <Badge variant="warning">{upcomingAbsences.length}</Badge>
-        </CardHeader>
-        {upcomingAbsences.length === 0 ? (
-          <div className="text-center py-8">
-            <svg className="w-12 h-12 mx-auto text-gray-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <p className="text-gray-500">Keine geplanten Abwesenheiten</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {upcomingAbsences.map((absence) => (
-              <AbsenceCard key={absence.id} absence={absence} variant="upcoming" />
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Past Absences */}
-      {pastAbsences.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Vergangene Abwesenheiten</CardTitle>
-            <Badge variant="default">{pastAbsences.length}</Badge>
-          </CardHeader>
-          <div className="space-y-3 opacity-60">
-            {pastAbsences.slice(0, 10).map((absence) => (
-              <AbsenceCard key={absence.id} absence={absence} variant="past" />
-            ))}
-            {pastAbsences.length > 10 && (
-              <p className="text-sm text-gray-500 text-center py-2">
-                + {pastAbsences.length - 10} weitere vergangene Abwesenheiten
-              </p>
-            )}
-          </div>
-        </Card>
-      )}
-
-      {/* Info Card */}
-      <Card className="p-6 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-        <div className="flex items-start gap-3">
-          <svg className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <h3 className="font-medium text-blue-900 dark:text-blue-200 mb-1">
-              Hinweis zu Abwesenheiten
-            </h3>
-            <p className="text-sm text-blue-800 dark:text-blue-300">
-              Abwesenheiten werden vom Fahrer selbst eingetragen. Bei Abwesenheiten
-              wird der Fahrer bei der Fahrtzuweisung automatisch als &quot;nicht verfuegbar&quot;
-              angezeigt. Bitte planen Sie entsprechend.
-            </p>
-          </div>
-        </div>
-      </Card>
+      {/* Absences List - Editable */}
+      <DriverAbsenceList driverId={id} absences={absences} />
 
       {/* Navigation */}
       <div className="flex items-center gap-4">
@@ -218,62 +133,6 @@ export default async function DriverAbsencesPage({ params }: AbsencesPageProps) 
             Zur Fahrer-Uebersicht
           </Button>
         </Link>
-      </div>
-    </div>
-  );
-}
-
-// =============================================================================
-// ABSENCE CARD COMPONENT
-// =============================================================================
-
-interface AbsenceCardProps {
-  absence: {
-    id: string;
-    fromDate: string;
-    toDate: string;
-    reason: string | null;
-  };
-  variant: 'current' | 'upcoming' | 'past';
-}
-
-function AbsenceCard({ absence, variant }: AbsenceCardProps) {
-  const duration = getDuration(absence.fromDate, absence.toDate);
-  const isSingleDay = absence.fromDate === absence.toDate;
-
-  const variantStyles = {
-    current: 'bg-red-100 dark:bg-red-900/30 border-red-200 dark:border-red-800',
-    upcoming: 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800',
-    past: 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700',
-  };
-
-  return (
-    <div className={`p-4 rounded-lg border ${variantStyles[variant]}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="font-medium text-gray-900 dark:text-white">
-              {isSingleDay ? (
-                formatDate(absence.fromDate)
-              ) : (
-                <>
-                  {formatDate(absence.fromDate)} - {formatDate(absence.toDate)}
-                </>
-              )}
-            </span>
-          </div>
-          {absence.reason && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Grund: {absence.reason}
-            </p>
-          )}
-        </div>
-        <Badge variant={variant === 'current' ? 'danger' : variant === 'upcoming' ? 'warning' : 'default'}>
-          {duration} {duration === 1 ? 'Tag' : 'Tage'}
-        </Badge>
       </div>
     </div>
   );
