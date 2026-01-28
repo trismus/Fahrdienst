@@ -13,11 +13,22 @@ import {
   createPatientSchema,
   updatePatientSchema,
   validate,
-  type CreatePatientInput,
-  type UpdatePatientInput,
+  type CreatePatientInput as ZodCreatePatientInput,
+  type UpdatePatientInput as ZodUpdatePatientInput,
 } from '@/lib/validations/schemas';
 import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from '@/lib/utils/rate-limit';
-import { createClient as createAuthClient } from '@/lib/supabase/server';
+import type { CreatePatientInput } from '@/types/database';
+
+// Helper to convert null to undefined for optional fields
+function nullToUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...obj };
+  for (const key of Object.keys(result)) {
+    if (result[key] === null) {
+      result[key] = undefined;
+    }
+  }
+  return result;
+}
 
 // =============================================================================
 // READ OPERATIONS
@@ -99,12 +110,14 @@ export async function searchPatients(query: string): Promise<Patient[]> {
 // CREATE OPERATIONS
 // =============================================================================
 
-export async function createPatient(input: CreatePatientInput): Promise<Patient> {
+export async function createPatient(input: ZodCreatePatientInput): Promise<Patient> {
   const supabase = await createClient();
 
   // Validate input to prevent XSS and ensure data integrity
   const validatedInput = validate(createPatientSchema, input);
-  const row = patientInputToRow(validatedInput);
+  // Convert null values to undefined for type compatibility
+  const convertedInput = nullToUndefined(validatedInput) as unknown as CreatePatientInput;
+  const row = patientInputToRow(convertedInput);
 
   const { data, error } = await supabase
     .from('patients')
@@ -122,7 +135,7 @@ export async function createPatient(input: CreatePatientInput): Promise<Patient>
 // UPDATE OPERATIONS
 // =============================================================================
 
-export async function updatePatient(id: string, input: UpdatePatientInput): Promise<Patient> {
+export async function updatePatient(id: string, input: ZodUpdatePatientInput): Promise<Patient> {
   const supabase = await createClient();
 
   // Validate ID format to prevent injection

@@ -1,21 +1,22 @@
-import { RideForm } from '@/components/forms';
-import { getPatients } from '@/lib/actions/patients';
-import { getDrivers } from '@/lib/actions/drivers';
-import { getDestinations } from '@/lib/actions/destinations';
+import { RideFormV2 } from '@/components/forms/ride-form-v2';
+import { getPatients } from '@/lib/actions/patients-v2';
+import { getDestinations } from '@/lib/actions/destinations-v2';
 
 export default async function NewRidePage() {
-  const [patients, drivers, destinations] = await Promise.all([
+  const [patients, destinations] = await Promise.all([
     getPatients(),
-    getDrivers(),
     getDestinations(),
   ]);
 
   return (
-    <div className="max-w-2xl">
-      <RideForm
+    <div>
+      <h1 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">
+        Neue Fahrt erstellen
+      </h1>
+      <RideFormV2
         patients={patients}
-        drivers={drivers}
         destinations={destinations}
+        mode="create"
       />
     </div>
   );

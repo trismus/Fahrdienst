@@ -15,10 +15,22 @@ import {
   updateDestinationSchema,
   destinationTypeSchema,
   validate,
-  type CreateDestinationInput,
-  type UpdateDestinationInput,
+  type CreateDestinationInput as ZodCreateDestinationInput,
+  type UpdateDestinationInput as ZodUpdateDestinationInput,
 } from '@/lib/validations/schemas';
 import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from '@/lib/utils/rate-limit';
+import type { CreateDestinationInput } from '@/types/database';
+
+// Helper to convert null to undefined for optional fields
+function nullToUndefined<T extends Record<string, unknown>>(obj: T): Record<string, unknown> {
+  const result: Record<string, unknown> = { ...obj };
+  for (const key of Object.keys(result)) {
+    if (result[key] === null) {
+      result[key] = undefined;
+    }
+  }
+  return result;
+}
 
 // =============================================================================
 // READ OPERATIONS
@@ -117,12 +129,14 @@ export async function searchDestinations(query: string): Promise<Destination[]> 
 // CREATE OPERATIONS
 // =============================================================================
 
-export async function createDestination(input: CreateDestinationInput): Promise<Destination> {
+export async function createDestination(input: ZodCreateDestinationInput): Promise<Destination> {
   const supabase = await createClient();
 
   // Validate input to prevent XSS and ensure data integrity
   const validatedInput = validate(createDestinationSchema, input);
-  const row = destinationInputToRow(validatedInput);
+  // Convert null values to undefined for type compatibility
+  const convertedInput = nullToUndefined(validatedInput) as unknown as CreateDestinationInput;
+  const row = destinationInputToRow(convertedInput);
 
   const { data, error } = await supabase
     .from('destinations')
@@ -140,7 +154,7 @@ export async function createDestination(input: CreateDestinationInput): Promise<
 // UPDATE OPERATIONS
 // =============================================================================
 
-export async function updateDestination(id: string, input: UpdateDestinationInput): Promise<Destination> {
+export async function updateDestination(id: string, input: ZodUpdateDestinationInput): Promise<Destination> {
   const supabase = await createClient();
 
   // Validate ID format to prevent injection

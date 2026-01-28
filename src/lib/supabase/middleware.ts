@@ -4,6 +4,13 @@ import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 
 type CookieToSet = { name: string; value: string; options?: Partial<ResponseCookie> };
 
+// Routes that don't require authentication
+const publicRoutes = ['/', '/login'];
+
+// Routes that require specific roles
+const dispatcherRoutes = ['/dashboard', '/rides', '/drivers', '/patients', '/destinations'];
+const driverRoutes = ['/my-rides', '/my-availability'];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -33,7 +40,26 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Refresh session if expired
-  await supabase.auth.getUser();
+  const { data: { user }, error } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // Check if route is public
+  const isPublicRoute = publicRoutes.some(route =>
+    pathname === route || pathname.startsWith('/api/') || pathname.startsWith('/_next/')
+  );
+
+  // If user is not authenticated and route is not public, redirect to login
+  if (!user && !isPublicRoute) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // If user is authenticated and on login page, redirect to dashboard
+  if (user && pathname === '/login') {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
 
   return supabaseResponse;
 }
