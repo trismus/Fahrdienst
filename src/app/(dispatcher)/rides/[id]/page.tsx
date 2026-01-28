@@ -1,7 +1,8 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { RideFormV2 } from '@/components/forms/ride-form-v2';
-import { DriverAssignment } from '@/components/rides';
+import { DriverAssignment, RideCancelButton } from '@/components/rides';
+import { RouteMap } from '@/components/maps';
 import { Card, Button, Badge } from '@/components/ui';
 import { getRideById, type RideStatus } from '@/lib/actions/rides-v2';
 import { getPatients } from '@/lib/actions/patients-v2';
@@ -53,6 +54,13 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
 
   const isEditMode = edit === 'true';
 
+  // Check if we have valid coordinates for the map
+  const hasValidCoordinates =
+    ride.patient.latitude &&
+    ride.patient.longitude &&
+    ride.destination.latitude &&
+    ride.destination.longitude;
+
   // Edit mode - show form
   if (isEditMode) {
     return (
@@ -91,12 +99,32 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
           </h1>
           <StatusBadge status={ride.status} />
         </div>
-        {ride.status !== 'completed' && ride.status !== 'cancelled' && (
-          <Link href={`/rides/${id}?edit=true`}>
-            <Button variant="secondary">Bearbeiten</Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <RideCancelButton rideId={ride.id} rideStatus={ride.status} />
+          {ride.status !== 'completed' && ride.status !== 'cancelled' && (
+            <Link href={`/rides/${id}?edit=true`}>
+              <Button variant="secondary">Bearbeiten</Button>
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Route Map - Full Width at Top */}
+      {hasValidCoordinates && (
+        <RouteMap
+          origin={{
+            lat: ride.patient.latitude!,
+            lng: ride.patient.longitude!,
+            label: `${ride.patient.firstName} ${ride.patient.lastName}`,
+          }}
+          destination={{
+            lat: ride.destination.latitude!,
+            lng: ride.destination.longitude!,
+            label: ride.destination.name,
+          }}
+          className="w-full"
+        />
+      )}
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -150,15 +178,17 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
                 </div>
               </div>
 
-              {ride.estimatedDuration && (
+              {(ride.estimatedDuration || ride.estimatedDistance) && (
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
                   <div className="flex gap-6">
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Dauer</p>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {ride.estimatedDuration} Min.
-                      </p>
-                    </div>
+                    {ride.estimatedDuration && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Dauer</p>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {ride.estimatedDuration} Min.
+                        </p>
+                      </div>
+                    )}
                     {ride.estimatedDistance && (
                       <div>
                         <p className="text-sm text-gray-500 dark:text-gray-400">Distanz</p>
@@ -175,9 +205,14 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
 
           {/* Patient Card */}
           <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Patient
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Patient
+              </h2>
+              <Link href={`/patients/${ride.patientId}`}>
+                <Button variant="ghost" size="sm">Details</Button>
+              </Link>
+            </div>
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
@@ -186,9 +221,12 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Adresse</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Adresse (Start)</p>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {ride.patient.street}, {ride.patient.city}
+                  {ride.patient.street}
+                </p>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {ride.patient.postalCode} {ride.patient.city}
                 </p>
               </div>
               <div>
@@ -200,6 +238,14 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
                   {ride.patient.phone}
                 </a>
               </div>
+              {ride.patient.pickupInstructions && (
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Abholhinweise</p>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">
+                    {ride.patient.pickupInstructions}
+                  </p>
+                </div>
+              )}
               {(ride.patient.needsWheelchair || ride.patient.needsWalker || ride.patient.needsAssistance) && (
                 <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Besondere Beduerfnisse</p>
@@ -230,9 +276,14 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
         <div className="space-y-6">
           {/* Destination Card */}
           <Card className="p-6">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Ziel
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Ziel
+              </h2>
+              <Link href={`/destinations/${ride.destinationId}`}>
+                <Button variant="ghost" size="sm">Details</Button>
+              </Link>
+            </div>
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
@@ -241,11 +292,33 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Adresse</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Adresse (Ende)</p>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {ride.destination.street}, {ride.destination.city}
+                  {ride.destination.street}
+                </p>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {ride.destination.postalCode} {ride.destination.city}
                 </p>
               </div>
+              {ride.destination.phone && (
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Telefon</p>
+                  <a
+                    href={`tel:${ride.destination.phone}`}
+                    className="font-medium text-blue-600 hover:underline"
+                  >
+                    {ride.destination.phone}
+                  </a>
+                </div>
+              )}
+              {ride.destination.arrivalInstructions && (
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Ankunftshinweise</p>
+                  <p className="text-gray-700 dark:text-gray-300 text-sm">
+                    {ride.destination.arrivalInstructions}
+                  </p>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -261,10 +334,21 @@ export default async function RideDetailPage({ params, searchParams }: RideDetai
           {/* Driver Contact Info (if assigned) */}
           {ride.driver && (
             <Card className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Fahrer-Kontakt
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Fahrer-Kontakt
+                </h2>
+                <Link href={`/drivers/${ride.driverId}`}>
+                  <Button variant="ghost" size="sm">Details</Button>
+                </Link>
+              </div>
               <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Name</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {ride.driver.firstName} {ride.driver.lastName}
+                  </p>
+                </div>
                 <div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">Telefon</p>
                   <a

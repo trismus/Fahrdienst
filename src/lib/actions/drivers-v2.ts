@@ -610,3 +610,92 @@ export async function deleteAbsence(id: string, driverId: string): Promise<void>
 
   revalidatePath(`/drivers/${validDriverId}`);
 }
+
+// =============================================================================
+// GET AVAILABLE DRIVERS COUNT FOR TODAY
+// =============================================================================
+
+export interface DriverAvailabilityStats {
+  totalActive: number;
+  availableToday: number;
+  absentToday: number;
+  withAvailability: number;
+}
+
+/**
+ * Gets statistics about driver availability for today.
+ * Used by the dashboard to show "Fahrer verfuegbar heute".
+ */
+export async function getDriverAvailabilityStats(): Promise<DriverAvailabilityStats> {
+  const supabase = await createClient();
+
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+
+  // Get weekday
+  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const weekday = weekdays[today.getDay()];
+  const isWeekday = today.getDay() >= 1 && today.getDay() <= 5;
+
+  // Get all active drivers
+  const { data: drivers, error: driversError } = await supabase
+    .from('drivers')
+    .select('id')
+    .eq('is_active', true);
+
+  if (driversError) throw new Error(`Fehler beim Laden der Fahrer: ${driversError.message}`);
+
+  const totalActive = drivers?.length || 0;
+
+  if (totalActive === 0) {
+    return {
+      totalActive: 0,
+      availableToday: 0,
+      absentToday: 0,
+      withAvailability: 0,
+    };
+  }
+
+  const driverIds = drivers!.map((d) => d.id);
+
+  // Get absences for today
+  const { data: absences } = await supabase
+    .from('absences')
+    .select('driver_id')
+    .in('driver_id', driverIds)
+    .lte('from_date', todayStr)
+    .gte('to_date', todayStr);
+
+  const absentDriverIds = new Set(absences?.map((a) => a.driver_id) || []);
+  const absentToday = absentDriverIds.size;
+
+  // Get drivers with availability blocks for today's weekday (only on weekdays)
+  let driversWithAvailability = 0;
+  let availableToday = 0;
+
+  if (isWeekday) {
+    const { data: availabilityBlocks } = await supabase
+      .from('availability_blocks')
+      .select('driver_id')
+      .in('driver_id', driverIds)
+      .eq('weekday', weekday);
+
+    // Count unique drivers with any availability block for today
+    const driversWithBlocksSet = new Set(availabilityBlocks?.map((b) => b.driver_id) || []);
+    driversWithAvailability = driversWithBlocksSet.size;
+
+    // Available = has availability block AND not absent
+    for (const driverId of driversWithBlocksSet) {
+      if (!absentDriverIds.has(driverId)) {
+        availableToday++;
+      }
+    }
+  }
+
+  return {
+    totalActive,
+    availableToday,
+    absentToday,
+    withAvailability: driversWithAvailability,
+  };
+}

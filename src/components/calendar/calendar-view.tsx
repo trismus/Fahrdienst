@@ -10,11 +10,12 @@ type ViewMode = 'day' | 'week' | 'month';
 interface CalendarViewProps {
   rides: RideWithRelations[];
   initialDate?: Date;
+  initialView?: ViewMode;
 }
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const MONTHS = [
-  'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+  'Januar', 'Februar', 'Maerz', 'April', 'Mai', 'Juni',
   'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
 ];
 
@@ -59,8 +60,8 @@ function getMonthDays(year: number, month: number) {
   return days;
 }
 
-export function CalendarView({ rides, initialDate = new Date() }: CalendarViewProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>('week');
+export function CalendarView({ rides, initialDate = new Date(), initialView = 'week' }: CalendarViewProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>(initialView);
   const [currentDate, setCurrentDate] = useState(initialDate);
 
   const navigate = (direction: number) => {
@@ -104,14 +105,18 @@ export function CalendarView({ rides, initialDate = new Date() }: CalendarViewPr
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
-          <Button variant="ghost" onClick={() => navigate(-1)}>
-            &larr;
+          <Button variant="ghost" onClick={() => navigate(-1)} aria-label="Vorheriger Zeitraum">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
           </Button>
           <Button variant="ghost" onClick={goToToday}>
             Heute
           </Button>
-          <Button variant="ghost" onClick={() => navigate(1)}>
-            &rarr;
+          <Button variant="ghost" onClick={() => navigate(1)} aria-label="Naechster Zeitraum">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
           </Button>
           <h2 className="text-xl font-semibold ml-4">{title}</h2>
         </div>
@@ -147,30 +152,133 @@ export function CalendarView({ rides, initialDate = new Date() }: CalendarViewPr
   );
 }
 
-function DayView({ rides }: { date?: Date; rides: RideWithRelations[] }) {
-  const hours = Array.from({ length: 12 }, (_, i) => i + 7); // 7:00 - 18:00
+// Time slots in 30-minute intervals from 07:00 to 18:30
+const TIME_SLOTS_30MIN = [
+  { hour: 7, minute: 0, label: '07:00' },
+  { hour: 7, minute: 30, label: '07:30' },
+  { hour: 8, minute: 0, label: '08:00' },
+  { hour: 8, minute: 30, label: '08:30' },
+  { hour: 9, minute: 0, label: '09:00' },
+  { hour: 9, minute: 30, label: '09:30' },
+  { hour: 10, minute: 0, label: '10:00' },
+  { hour: 10, minute: 30, label: '10:30' },
+  { hour: 11, minute: 0, label: '11:00' },
+  { hour: 11, minute: 30, label: '11:30' },
+  { hour: 12, minute: 0, label: '12:00' },
+  { hour: 12, minute: 30, label: '12:30' },
+  { hour: 13, minute: 0, label: '13:00' },
+  { hour: 13, minute: 30, label: '13:30' },
+  { hour: 14, minute: 0, label: '14:00' },
+  { hour: 14, minute: 30, label: '14:30' },
+  { hour: 15, minute: 0, label: '15:00' },
+  { hour: 15, minute: 30, label: '15:30' },
+  { hour: 16, minute: 0, label: '16:00' },
+  { hour: 16, minute: 30, label: '16:30' },
+  { hour: 17, minute: 0, label: '17:00' },
+  { hour: 17, minute: 30, label: '17:30' },
+  { hour: 18, minute: 0, label: '18:00' },
+  { hour: 18, minute: 30, label: '18:30' },
+];
+
+function DayView({ date, rides }: { date: Date; rides: RideWithRelations[] }) {
+  const today = new Date();
+  const isToday = isSameDay(date, today);
+
+  // Get current time slot for "now" indicator
+  const currentHour = today.getHours();
+  const currentMinute = today.getMinutes();
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      {hours.map((hour) => {
-        const hourRides = rides.filter((ride) => {
-          const rideHour = new Date(ride.pickup_time).getHours();
-          return rideHour === hour;
+      {/* Time slots with 30-minute intervals */}
+      {TIME_SLOTS_30MIN.map((slot) => {
+        // Get rides that fall within this 30-minute slot
+        const slotRides = rides.filter((ride) => {
+          const rideDate = new Date(ride.pickup_time);
+          const rideHour = rideDate.getHours();
+          const rideMinute = rideDate.getMinutes();
+
+          // Check if ride falls within this 30-minute slot
+          if (rideHour === slot.hour) {
+            if (slot.minute === 0) {
+              return rideMinute < 30;
+            } else {
+              return rideMinute >= 30;
+            }
+          }
+          return false;
         });
 
+        // Check if this is the current time slot (for "now" indicator)
+        const isCurrentSlot = isToday &&
+          currentHour === slot.hour &&
+          ((slot.minute === 0 && currentMinute < 30) ||
+           (slot.minute === 30 && currentMinute >= 30));
+
+        // Only show label for full hours
+        const showLabel = slot.minute === 0;
+
         return (
-          <div key={hour} className="flex border-b last:border-b-0">
-            <div className="w-16 p-2 text-sm text-gray-500 bg-gray-50 dark:bg-gray-800 border-r">
-              {hour}:00
+          <div
+            key={`${slot.hour}-${slot.minute}`}
+            className={`
+              flex border-b last:border-b-0
+              ${isCurrentSlot ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
+              ${slot.minute === 30 ? 'border-b-dashed border-gray-200 dark:border-gray-700' : ''}
+            `}
+          >
+            {/* Time column */}
+            <div className={`
+              w-20 p-2 text-sm bg-gray-50 dark:bg-gray-800 border-r flex-shrink-0
+              ${slot.minute === 30 ? 'text-gray-300 dark:text-gray-600' : 'text-gray-500'}
+              ${isCurrentSlot ? 'font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30' : ''}
+            `}>
+              {showLabel ? slot.label : ''}
+              {slot.minute === 30 && (
+                <span className="text-xs text-gray-400">:30</span>
+              )}
             </div>
-            <div className="flex-1 p-2 min-h-[60px]">
-              {hourRides.map((ride) => (
+
+            {/* Content area */}
+            <div className={`
+              flex-1 p-2 min-h-[48px] relative
+              ${slot.minute === 0 ? 'border-t border-gray-100 dark:border-gray-800' : ''}
+            `}>
+              {/* Current time indicator */}
+              {isCurrentSlot && (
+                <div className="absolute left-0 right-0 h-0.5 bg-blue-500 z-10" style={{
+                  top: `${(currentMinute % 30) / 30 * 100}%`
+                }}>
+                  <div className="absolute left-0 -top-1 w-2 h-2 rounded-full bg-blue-500" />
+                </div>
+              )}
+
+              {/* Rides */}
+              {slotRides.map((ride) => (
                 <RideCard key={ride.id} ride={ride} compact />
               ))}
             </div>
           </div>
         );
       })}
+
+      {/* Legend */}
+      <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t">
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <div className="flex items-center gap-4">
+            <span>{rides.length} Fahrten</span>
+            {isToday && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                Aktuelle Zeit
+              </span>
+            )}
+          </div>
+          <Link href="/rides/new" className="text-blue-600 hover:underline">
+            + Neue Fahrt
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
@@ -298,8 +406,13 @@ function RideCard({ ride, compact = false }: { ride: RideWithRelations; compact?
           <StatusBadge status={ride.status} />
         </div>
         <div className="truncate text-gray-600 dark:text-gray-400">
-          {ride.patient?.name} → {ride.destination?.name}
+          {ride.patient?.name} <span className="text-gray-400">-</span> {ride.destination?.name}
         </div>
+        {ride.driver && (
+          <div className="text-gray-500 dark:text-gray-500 truncate mt-0.5">
+            Fahrer: {ride.driver.name}
+          </div>
+        )}
       </Link>
     );
   }

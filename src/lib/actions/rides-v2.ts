@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
-import { validateId } from '@/lib/utils/sanitize';
+import { validateId, sanitizeSearchQuery } from '@/lib/utils/sanitize';
 import { checkRateLimit, createRateLimitKey, RATE_LIMITS, RateLimitError } from '@/lib/utils/rate-limit';
 
 // =============================================================================
@@ -225,6 +225,7 @@ export interface RideFilters {
   patientId?: string;
   fromDate?: string;
   toDate?: string;
+  searchQuery?: string; // Freitext-Suche ueber Patient-Name, Destination-Name
   limit?: number;
   offset?: number;
 }
@@ -292,7 +293,7 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
   if (error) throw new Error(`Fehler beim Laden der Fahrten: ${error.message}`);
 
   // Transform nested data
-  return (data || []).map((row: Record<string, unknown>) => {
+  let results = (data || []).map((row: Record<string, unknown>) => {
     const patient = row.patient as Record<string, unknown>;
     const driver = row.driver as Record<string, unknown> | null;
     const destination = row.destination as Record<string, unknown>;
@@ -355,6 +356,22 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
       },
     };
   });
+
+  // Apply text search filter (case-insensitive) over Patient and Destination names
+  // This is done client-side because Supabase doesn't support search across JOINed tables
+  if (filters?.searchQuery) {
+    const sanitized = sanitizeSearchQuery(filters.searchQuery);
+    if (sanitized) {
+      const searchLower = sanitized.toLowerCase();
+      results = results.filter((ride) => {
+        const patientName = `${ride.patient.firstName} ${ride.patient.lastName}`.toLowerCase();
+        const destinationName = ride.destination.name.toLowerCase();
+        return patientName.includes(searchLower) || destinationName.includes(searchLower);
+      });
+    }
+  }
+
+  return results;
 }
 
 export async function getRideById(id: string): Promise<RideWithRelations | null> {

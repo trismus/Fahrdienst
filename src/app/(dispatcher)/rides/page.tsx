@@ -1,22 +1,13 @@
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { Button, Card, Badge, Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui';
+import { RideSearch } from '@/components/rides';
 import { getRides, getRideStats, type RideStatus } from '@/lib/actions/rides-v2';
 import { getDrivers } from '@/lib/actions/drivers-v2';
 
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-function formatDateTime(isoString: string) {
-  const date = new Date(isoString);
-  return date.toLocaleString('de-CH', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
 
 function formatDate(isoString: string) {
   const date = new Date(isoString);
@@ -49,6 +40,7 @@ interface PageProps {
     date?: string;
     status?: RideStatus;
     driver?: string;
+    q?: string; // Search query
   }>;
 }
 
@@ -60,6 +52,7 @@ export default async function RidesPage({ searchParams }: PageProps) {
   const selectedDate = params.date || today;
   const selectedStatus = params.status;
   const selectedDriver = params.driver;
+  const searchQuery = params.q;
 
   // Fetch data
   const [rides, stats, drivers] = await Promise.all([
@@ -67,6 +60,7 @@ export default async function RidesPage({ searchParams }: PageProps) {
       date: selectedDate,
       status: selectedStatus,
       driverId: selectedDriver === 'unassigned' ? undefined : selectedDriver,
+      searchQuery: searchQuery,
     }),
     getRideStats(selectedDate),
     getDrivers(),
@@ -118,6 +112,24 @@ export default async function RidesPage({ searchParams }: PageProps) {
       {/* Filters */}
       <Card className="p-4">
         <form className="flex flex-wrap gap-4 items-end">
+          {/* Search Field */}
+          <div className="flex-1 min-w-[250px]">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Suche
+            </label>
+            <Suspense fallback={
+              <input
+                type="text"
+                placeholder="Patient oder Ziel suchen..."
+                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white w-full"
+                disabled
+              />
+            }>
+              <RideSearch placeholder="Patient oder Ziel suchen..." />
+            </Suspense>
+          </div>
+
           {/* Date Filter */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -185,6 +197,21 @@ export default async function RidesPage({ searchParams }: PageProps) {
         </form>
       </Card>
 
+      {/* Search result indicator */}
+      {searchQuery && (
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span>
+            {filteredRides.length} Ergebnis{filteredRides.length !== 1 ? 'se' : ''} fuer &quot;{searchQuery}&quot;
+          </span>
+          <Link href={`/rides?date=${selectedDate}`} className="text-blue-600 hover:underline ml-2">
+            Suche loeschen
+          </Link>
+        </div>
+      )}
+
       {/* Rides Table */}
       <Card padding="none">
         <Table>
@@ -204,16 +231,33 @@ export default async function RidesPage({ searchParams }: PageProps) {
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-gray-500 py-12">
                   <div className="space-y-2">
-                    <p className="text-lg">Keine Fahrten gefunden</p>
-                    <p className="text-sm">
-                      {selectedDate === today
-                        ? 'Es sind keine Fahrten fuer heute geplant.'
-                        : `Es sind keine Fahrten fuer den ${formatDate(selectedDate)} geplant.`
-                      }
-                    </p>
-                    <Link href="/rides/new">
-                      <Button size="sm" className="mt-2">Fahrt erstellen</Button>
-                    </Link>
+                    {searchQuery ? (
+                      <>
+                        <svg className="w-12 h-12 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        <p className="text-lg">Keine Fahrten gefunden</p>
+                        <p className="text-sm">
+                          Keine Ergebnisse fuer &quot;{searchQuery}&quot;
+                        </p>
+                        <Link href={`/rides?date=${selectedDate}`}>
+                          <Button size="sm" variant="secondary" className="mt-2">Suche loeschen</Button>
+                        </Link>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-lg">Keine Fahrten gefunden</p>
+                        <p className="text-sm">
+                          {selectedDate === today
+                            ? 'Es sind keine Fahrten fuer heute geplant.'
+                            : `Es sind keine Fahrten fuer den ${formatDate(selectedDate)} geplant.`
+                          }
+                        </p>
+                        <Link href="/rides/new">
+                          <Button size="sm" className="mt-2">Fahrt erstellen</Button>
+                        </Link>
+                      </>
+                    )}
                   </div>
                 </TableCell>
               </TableRow>
@@ -233,7 +277,14 @@ export default async function RidesPage({ searchParams }: PageProps) {
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">
-                      {ride.patient.firstName} {ride.patient.lastName}
+                      {searchQuery ? (
+                        <HighlightMatch
+                          text={`${ride.patient.firstName} ${ride.patient.lastName}`}
+                          query={searchQuery}
+                        />
+                      ) : (
+                        `${ride.patient.firstName} ${ride.patient.lastName}`
+                      )}
                     </div>
                     <div className="text-sm text-gray-500 flex gap-2">
                       {ride.patient.needsWheelchair && (
@@ -251,7 +302,13 @@ export default async function RidesPage({ searchParams }: PageProps) {
                     {ride.patient.city}
                   </TableCell>
                   <TableCell>
-                    <div className="font-medium">{ride.destination.name}</div>
+                    <div className="font-medium">
+                      {searchQuery ? (
+                        <HighlightMatch text={ride.destination.name} query={searchQuery} />
+                      ) : (
+                        ride.destination.name
+                      )}
+                    </div>
                     <div className="text-sm text-gray-500">{ride.destination.city}</div>
                   </TableCell>
                   <TableCell>
@@ -282,5 +339,33 @@ export default async function RidesPage({ searchParams }: PageProps) {
         </Table>
       </Card>
     </div>
+  );
+}
+
+// =============================================================================
+// HIGHLIGHT MATCH COMPONENT
+// =============================================================================
+
+function HighlightMatch({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const index = lowerText.indexOf(lowerQuery);
+
+  if (index === -1) return <>{text}</>;
+
+  const before = text.substring(0, index);
+  const match = text.substring(index, index + query.length);
+  const after = text.substring(index + query.length);
+
+  return (
+    <>
+      {before}
+      <mark className="bg-yellow-200 dark:bg-yellow-800 text-inherit px-0.5 rounded">
+        {match}
+      </mark>
+      {after}
+    </>
   );
 }

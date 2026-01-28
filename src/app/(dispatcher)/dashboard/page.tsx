@@ -3,6 +3,7 @@ import { CalendarView } from '@/components/calendar';
 import { Card, CardHeader, CardTitle, Button, Badge } from '@/components/ui';
 import { ActiveRidesCard, LiveActivityPanel, DashboardAutoRefresh } from '@/components/dashboard';
 import { getRides, getRideStats, type RideStatus } from '@/lib/actions/rides-v2';
+import { getDriverAvailabilityStats } from '@/lib/actions/drivers-v2';
 
 // =============================================================================
 // STATUS BADGE COMPONENT
@@ -37,12 +38,13 @@ export default async function DashboardPage() {
   endOfWeek.setHours(23, 59, 59, 999);
 
   // Fetch data
-  const [weekRides, todayStats] = await Promise.all([
+  const [weekRides, todayStats, driverStats] = await Promise.all([
     getRides({
       fromDate: startOfWeek.toISOString(),
       toDate: endOfWeek.toISOString(),
     }),
     getRideStats(), // Today's stats by default
+    getDriverAvailabilityStats(),
   ]);
 
   // Filter today's rides
@@ -89,66 +91,99 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats Row 1 - Main Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           {/* Fahrten heute */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                  Fahrten heute
-                </p>
-                <p className="text-4xl font-bold text-gray-900 dark:text-white tabular-nums">
-                  {todayStats.total}
-                </p>
+          <Link href="/rides">
+            <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Fahrten heute
+                  </p>
+                  <p className="text-4xl font-bold text-gray-900 dark:text-white tabular-nums">
+                    {todayStats.total}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </Link>
 
           {/* Aktive Fahrten (Real-time) */}
           <ActiveRidesCard initialCount={todayStats.inProgress} />
 
           {/* Nicht zugewiesen */}
-          <Card className={`p-6 ${unassignedRides.length > 0 ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/10' : ''}`}>
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                  Nicht zugewiesen
-                </p>
-                <p className={`text-4xl font-bold tabular-nums ${unassignedRides.length > 0 ? 'text-orange-600' : 'text-gray-900 dark:text-white'}`}>
-                  {unassignedRides.length}
-                </p>
+          <Link href="/rides?driver=unassigned">
+            <Card className={`p-6 hover:shadow-md transition-shadow cursor-pointer ${unassignedRides.length > 0 ? 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-900/10' : ''}`}>
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Nicht zugewiesen
+                  </p>
+                  <p className={`text-4xl font-bold tabular-nums ${unassignedRides.length > 0 ? 'text-orange-600' : 'text-gray-900 dark:text-white'}`}>
+                    {unassignedRides.length}
+                  </p>
+                </div>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${unassignedRides.length > 0 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                  <svg className={`w-6 h-6 ${unassignedRides.length > 0 ? 'text-orange-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
               </div>
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${unassignedRides.length > 0 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                <svg className={`w-6 h-6 ${unassignedRides.length > 0 ? 'text-orange-600' : 'text-gray-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+            </Card>
+          </Link>
+
+          {/* Fahrer verfuegbar */}
+          <Link href="/drivers">
+            <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Fahrer verfuegbar
+                  </p>
+                  <p className="text-4xl font-bold text-gray-900 dark:text-white tabular-nums">
+                    {driverStats.availableToday}
+                    <span className="text-lg font-normal text-gray-400">/{driverStats.totalActive}</span>
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
               </div>
-            </div>
-          </Card>
+              {driverStats.absentToday > 0 && (
+                <p className="text-xs text-orange-600 mt-2">
+                  {driverStats.absentToday} abwesend
+                </p>
+              )}
+            </Card>
+          </Link>
 
           {/* Abgeschlossen */}
-          <Card className="p-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                  Abgeschlossen
-                </p>
-                <p className="text-4xl font-bold text-green-600 tabular-nums">
-                  {todayStats.completed}
-                </p>
+          <Link href="/rides?status=completed">
+            <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
+                    Abgeschlossen
+                  </p>
+                  <p className="text-4xl font-bold text-green-600 tabular-nums">
+                    {todayStats.completed}
+                  </p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                <svg className="w-6 h-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </Link>
         </div>
 
         {/* Two Column Layout: Unassigned + Live Activity */}
