@@ -44,7 +44,6 @@ function getWeekStart(date: Date) {
 
 function getMonthDays(year: number, month: number) {
   const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
   const days: Date[] = [];
 
   // Get the Monday of the week containing the first day
@@ -148,7 +147,7 @@ export function CalendarView({ rides, initialDate = new Date() }: CalendarViewPr
   );
 }
 
-function DayView({ date, rides }: { date: Date; rides: RideWithRelations[] }) {
+function DayView({ rides }: { date?: Date; rides: RideWithRelations[] }) {
   const hours = Array.from({ length: 12 }, (_, i) => i + 7); // 7:00 - 18:00
 
   return (

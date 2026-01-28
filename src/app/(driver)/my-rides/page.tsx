@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { RideList } from '@/components/rides';
-import { Button } from '@/components/ui';
 import { getRidesForDriver } from '@/lib/actions/rides';
 import { createClient } from '@/lib/supabase/server';
 

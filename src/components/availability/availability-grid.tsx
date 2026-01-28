@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Card, CardHeader, CardTitle, Button } from '@/components/ui';
+import { Card, CardHeader, CardTitle } from '@/components/ui';
 import { setAvailabilityBlock, deleteAvailabilityBlock } from '@/lib/actions/drivers';
 import type { AvailabilityBlock, Weekday } from '@/types';
 
