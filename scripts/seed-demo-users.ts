@@ -8,7 +8,11 @@
  * - Run: npx tsx scripts/seed-demo-users.ts
  */
 
+import { config } from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+
+// Load .env.local
+config({ path: '.env.local' });
 
 // Configuration
 const DEMO_USERS = [
