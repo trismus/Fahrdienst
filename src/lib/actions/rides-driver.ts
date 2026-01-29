@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { validateId } from '@/lib/utils/sanitize';
+import { getUserProfile, type UserProfile } from './auth';
 import type { RideWithRelations, RideStatus, RideSubstatus } from './rides-v2';
 import {
   notifyRideConfirmed,
@@ -13,17 +14,105 @@ import {
 } from '@/lib/sms';
 
 // =============================================================================
-// DRIVER-SPECIFIC RIDE ACTIONS
+// SECURITY: Driver ID Resolution
+// =============================================================================
+//
+// IDOR PREVENTION: All driver actions now derive the driver ID from the
+// authenticated user's session, NOT from client-provided parameters.
+//
+// The flow is:
+// 1. Get authenticated user from session (via Supabase auth)
+// 2. Look up profile to get role
+// 3. If role is 'driver', get the driver record linked to this user
+// 4. Use that driver ID for all operations
+//
+// This prevents attackers from passing arbitrary driver IDs to access
+// or modify other drivers' rides.
 // =============================================================================
 
 /**
- * Gets all rides assigned to a specific driver.
- * Returns rides with full patient, destination, and driver details.
+ * Gets the current authenticated driver's ID from their session.
+ *
+ * SECURITY: This is the ONLY way to get a driver ID for driver actions.
+ * Never accept driver ID as a parameter from the client.
+ *
+ * @throws Error if user is not authenticated
+ * @throws Error if user is not a driver
+ * @throws Error if driver record is not linked
  */
-export async function getDriverRides(driverId: string): Promise<RideWithRelations[]> {
-  const supabase = await createClient();
-  const validId = validateId(driverId, 'driver');
+async function getAuthenticatedDriverId(): Promise<string> {
+  const profile = await getUserProfile();
 
+  if (!profile) {
+    throw new Error('Nicht authentifiziert');
+  }
+
+  if (profile.role !== 'driver') {
+    throw new Error('Nur Fahrer koennen diese Aktion ausfuehren');
+  }
+
+  if (!profile.driverId) {
+    throw new Error(
+      'Ihr Benutzerkonto ist nicht mit einem Fahrer-Profil verknuepft. ' +
+      'Bitte kontaktieren Sie den Administrator.'
+    );
+  }
+
+  return profile.driverId;
+}
+
+/**
+ * Gets user profile with optional driver access for dispatchers viewing driver data.
+ * Returns either the authenticated driver ID, or validates dispatcher access.
+ */
+async function getDriverIdForAccess(
+  requestedDriverId?: string
+): Promise<{ driverId: string; isDispatcher: boolean }> {
+  const profile = await getUserProfile();
+
+  if (!profile) {
+    throw new Error('Nicht authentifiziert');
+  }
+
+  // Dispatchers can view any driver's rides
+  if (profile.role === 'admin' || profile.role === 'operator') {
+    if (requestedDriverId) {
+      return { driverId: validateId(requestedDriverId, 'driver'), isDispatcher: true };
+    }
+    throw new Error('Dispatcher muss eine Fahrer-ID angeben');
+  }
+
+  // Drivers can only access their own data
+  if (profile.role === 'driver') {
+    if (!profile.driverId) {
+      throw new Error('Fahrer-Profil nicht verknuepft');
+    }
+
+    // If a driver ID was requested, verify it matches the authenticated driver
+    if (requestedDriverId && requestedDriverId !== profile.driverId) {
+      throw new Error('Zugriff verweigert: Sie koennen nur Ihre eigenen Fahrten einsehen');
+    }
+
+    return { driverId: profile.driverId, isDispatcher: false };
+  }
+
+  throw new Error('Unbekannte Benutzerrolle');
+}
+
+// =============================================================================
+// DRIVER-SPECIFIC RIDE QUERIES
+// =============================================================================
+
+/**
+ * Gets all rides assigned to the authenticated driver.
+ *
+ * @deprecated Use getMyRides() instead for driver access
+ * @param driverId - Optional, only used by dispatchers to view a specific driver's rides
+ */
+export async function getDriverRides(driverId?: string): Promise<RideWithRelations[]> {
+  const { driverId: resolvedDriverId } = await getDriverIdForAccess(driverId);
+
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('rides')
     .select(`
@@ -39,7 +128,7 @@ export async function getDriverRides(driverId: string): Promise<RideWithRelation
         arrival_instructions, latitude, longitude
       )
     `)
-    .eq('driver_id', validId)
+    .eq('driver_id', resolvedDriverId)
     .not('status', 'eq', 'cancelled')
     .order('pickup_time', { ascending: true });
 
@@ -49,16 +138,20 @@ export async function getDriverRides(driverId: string): Promise<RideWithRelation
 }
 
 /**
- * Gets rides for a driver filtered by date range.
+ * Gets rides for the authenticated driver filtered by date range.
+ *
+ * @param fromDate - Start date (ISO string)
+ * @param toDate - End date (ISO string)
+ * @param driverId - Optional, only used by dispatchers
  */
 export async function getDriverRidesForDateRange(
-  driverId: string,
   fromDate: string,
-  toDate: string
+  toDate: string,
+  driverId?: string
 ): Promise<RideWithRelations[]> {
-  const supabase = await createClient();
-  const validId = validateId(driverId, 'driver');
+  const { driverId: resolvedDriverId } = await getDriverIdForAccess(driverId);
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('rides')
     .select(`
@@ -74,7 +167,7 @@ export async function getDriverRidesForDateRange(
         arrival_instructions, latitude, longitude
       )
     `)
-    .eq('driver_id', validId)
+    .eq('driver_id', resolvedDriverId)
     .gte('pickup_time', fromDate)
     .lte('pickup_time', toDate)
     .not('status', 'eq', 'cancelled')
@@ -86,16 +179,13 @@ export async function getDriverRidesForDateRange(
 }
 
 /**
- * Gets a single ride by ID with authorization check for driver.
+ * Gets a single ride by ID for the authenticated driver.
  */
-export async function getDriverRide(
-  rideId: string,
-  driverId: string
-): Promise<RideWithRelations | null> {
-  const supabase = await createClient();
+export async function getDriverRide(rideId: string): Promise<RideWithRelations | null> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('rides')
     .select(`
@@ -112,7 +202,7 @@ export async function getDriverRide(
       )
     `)
     .eq('id', validRideId)
-    .eq('driver_id', validDriverId)
+    .eq('driver_id', driverId)
     .single();
 
   if (error) {
@@ -137,16 +227,15 @@ export interface ActionResult {
 /**
  * Driver confirms an assigned ride.
  * Transition: planned -> confirmed
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverConfirmRide(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverConfirmRide(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
-  // Verify ride belongs to driver and is in correct status
+  // Verify ride belongs to this driver and is in correct status
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
     .select('id, status, driver_id')
@@ -157,8 +246,8 @@ export async function driverConfirmRide(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   if (currentRide.status !== 'planned') {
@@ -193,16 +282,15 @@ export async function driverConfirmRide(
 /**
  * Driver rejects an assigned ride.
  * Removes driver assignment and sets status back to planned.
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverRejectRide(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverRejectRide(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
-  // Verify ride belongs to driver
+  // Verify ride belongs to this driver
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
     .select('id, status, driver_id')
@@ -213,8 +301,8 @@ export async function driverRejectRide(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   if (currentRide.status !== 'planned' && currentRide.status !== 'confirmed') {
@@ -246,19 +334,18 @@ export async function driverRejectRide(
  * Driver starts a confirmed ride (leaves for pickup).
  * Transition: confirmed -> in_progress, substatus: waiting -> en_route_pickup
  * Records started_at timestamp.
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverStartRide(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverStartRide(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
-  // Verify ride belongs to driver and is confirmed
+  // Verify ride belongs to this driver and is confirmed
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
-    .select('id, status, driver_id')
+    .select('id, status, driver_id, estimated_duration')
     .eq('id', validRideId)
     .single();
 
@@ -266,8 +353,8 @@ export async function driverStartRide(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   if (currentRide.status !== 'confirmed') {
@@ -294,14 +381,7 @@ export async function driverStartRide(
   }
 
   // Send SMS notification with ETA (non-blocking)
-  // Use estimated duration if available, otherwise default to 15 minutes
-  const { data: rideData } = await supabase
-    .from('rides')
-    .select('estimated_duration')
-    .eq('id', validRideId)
-    .single();
-
-  const etaMinutes = rideData?.estimated_duration || 15;
+  const etaMinutes = currentRide.estimated_duration || 15;
   notifyRideStarted(validRideId, etaMinutes).catch((err) => {
     console.error('[SMS] Failed to send ride started notification:', err);
   });
@@ -313,14 +393,13 @@ export async function driverStartRide(
 /**
  * Driver confirms arrival at pickup location.
  * Transition: substatus en_route_pickup -> at_pickup
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverArrivedAtPickup(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverArrivedAtPickup(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
@@ -332,8 +411,8 @@ export async function driverArrivedAtPickup(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   if (currentRide.status !== 'in_progress' || currentRide.substatus !== 'en_route_pickup') {
@@ -365,18 +444,17 @@ export async function driverArrivedAtPickup(
  * Driver confirms patient pickup.
  * Transition: substatus at_pickup -> en_route_destination
  * Records picked_up_at timestamp.
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverPickedUpPatient(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverPickedUpPatient(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
-    .select('id, status, substatus, driver_id')
+    .select('id, status, substatus, driver_id, estimated_duration')
     .eq('id', validRideId)
     .single();
 
@@ -384,8 +462,8 @@ export async function driverPickedUpPatient(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   // Allow pickup from either en_route_pickup or at_pickup
@@ -412,13 +490,7 @@ export async function driverPickedUpPatient(
   }
 
   // Send SMS notification to destination with ETA (non-blocking)
-  const { data: rideData } = await supabase
-    .from('rides')
-    .select('estimated_duration')
-    .eq('id', validRideId)
-    .single();
-
-  const etaMinutes = rideData?.estimated_duration || 15;
+  const etaMinutes = currentRide.estimated_duration || 15;
   notifyPatientPickedUp(validRideId, etaMinutes).catch((err) => {
     console.error('[SMS] Failed to send patient picked up notification:', err);
   });
@@ -431,14 +503,13 @@ export async function driverPickedUpPatient(
  * Driver confirms arrival at destination.
  * Transition: substatus en_route_destination -> at_destination
  * Records arrived_at timestamp.
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverArrivedAtDestination(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverArrivedAtDestination(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
@@ -450,8 +521,8 @@ export async function driverArrivedAtDestination(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   if (currentRide.status !== 'in_progress' || currentRide.substatus !== 'en_route_destination') {
@@ -483,16 +554,15 @@ export async function driverArrivedAtDestination(
  * Driver completes a ride.
  * Transition: in_progress -> completed, substatus: any -> completed
  * Records completed_at timestamp.
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverCompleteRide(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverCompleteRide(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
-  // Verify ride belongs to driver and is in progress
+  // Verify ride belongs to this driver and is in progress
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
     .select('id, status, substatus, driver_id, picked_up_at, arrived_at')
@@ -503,8 +573,8 @@ export async function driverCompleteRide(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   if (currentRide.status !== 'in_progress') {
@@ -555,14 +625,13 @@ export async function driverCompleteRide(
  * Quick complete action for simple rides.
  * Skips intermediate steps and goes directly to completed.
  * Records all timestamps at once.
+ *
+ * SECURITY: Driver ID is derived from session, not parameter.
  */
-export async function driverQuickCompleteRide(
-  rideId: string,
-  driverId: string
-): Promise<ActionResult> {
-  const supabase = await createClient();
+export async function driverQuickCompleteRide(rideId: string): Promise<ActionResult> {
+  const driverId = await getAuthenticatedDriverId();
   const validRideId = validateId(rideId, 'ride');
-  const validDriverId = validateId(driverId, 'driver');
+  const supabase = await createClient();
 
   const { data: currentRide, error: fetchError } = await supabase
     .from('rides')
@@ -574,8 +643,8 @@ export async function driverQuickCompleteRide(
     return { success: false, message: 'Fahrt nicht gefunden' };
   }
 
-  if (currentRide.driver_id !== validDriverId) {
-    return { success: false, message: 'Diese Fahrt ist dir nicht zugewiesen' };
+  if (currentRide.driver_id !== driverId) {
+    return { success: false, message: 'Diese Fahrt ist Ihnen nicht zugewiesen' };
   }
 
   // Allow quick complete from confirmed or in_progress

@@ -14,6 +14,11 @@ const navItems = [
   { href: '/destinations', label: 'Ziele', icon: 'destinations' },
 ];
 
+// Admin-only navigation items
+const adminNavItems = [
+  { href: '/admin/logs', label: 'System Logs', icon: 'logs' },
+];
+
 // Simple SVG icons
 function NavIcon({ type }: { type: string }) {
   switch (type) {
@@ -58,6 +63,12 @@ function NavIcon({ type }: { type: string }) {
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+      );
+    case 'logs':
+      return (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       );
     default:
@@ -109,6 +120,28 @@ export default async function DispatcherLayout({
               <span className="font-medium">{item.label}</span>
             </Link>
           ))}
+
+          {/* Admin-only section */}
+          {profile.role === 'admin' && (
+            <>
+              <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
+                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Administration
+                </p>
+              </div>
+              {adminNavItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl text-gray-700 dark:text-gray-300
+                           hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+                >
+                  <NavIcon type={item.icon} />
+                  <span className="font-medium">{item.label}</span>
+                </Link>
+              ))}
+            </>
+          )}
         </nav>
 
         {/* User Section */}

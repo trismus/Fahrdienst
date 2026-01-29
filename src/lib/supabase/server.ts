@@ -1,10 +1,15 @@
 import { createServerClient } from '@supabase/ssr';
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies';
 
 type CookieToSet = { name: string; value: string; options?: Partial<ResponseCookie> };
 
+/**
+ * Creates a Supabase client for server-side operations.
+ * This client respects Row Level Security (RLS) policies based on the authenticated user.
+ *
+ * Use this for all regular application operations.
+ */
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -31,32 +36,6 @@ export async function createClient() {
   );
 }
 
-/**
- * Creates an admin Supabase client using the service role key.
- * ⚠️ WARNING: This client bypasses Row Level Security (RLS) policies.
- *
- * Use this ONLY for:
- * - Administrative operations that require elevated permissions
- * - Temporary workaround until proper RLS policies are configured
- *
- * NEVER expose this client to the browser/client-side code.
- *
- * @returns Supabase client with service role privileges
- */
-export function createAdminClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error(
-      'Missing environment variables: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY'
-    );
-  }
-
-  return createSupabaseClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-}
+// NOTE: createAdminClient has been moved to @/lib/supabase/admin.ts
+// It should ONLY be used for scripts and migrations, NEVER in application code.
+// If you need admin access, you probably need to fix your RLS policies instead.

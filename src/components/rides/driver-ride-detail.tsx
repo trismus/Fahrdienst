@@ -22,7 +22,9 @@ import type { RideWithRelations, RideSubstatus } from '@/lib/actions/rides-v2';
 
 interface DriverRideDetailProps {
   ride: RideWithRelations;
-  driverId: string;
+  // Note: driverId is no longer needed as a prop.
+  // The server actions now derive the driver ID from the authenticated session.
+  // This prevents IDOR attacks where a malicious user could pass arbitrary driver IDs.
 }
 
 interface FeedbackState {
@@ -336,7 +338,7 @@ function ProgressTracker({ ride }: { ride: RideWithRelations }) {
 // MAIN COMPONENT
 // =============================================================================
 
-export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
+export function DriverRideDetail({ ride }: DriverRideDetailProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [feedback, setFeedback] = useState<FeedbackState>({ type: null, message: '' });
@@ -387,7 +389,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
       return {
         label: 'Fahrt bestaetigen',
         pendingLabel: 'Wird bestaetigt...',
-        action: () => driverConfirmRide(ride.id, driverId),
+        action: () => driverConfirmRide(ride.id),
         color: 'bg-blue-600 hover:bg-blue-700',
       };
     }
@@ -395,7 +397,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
       return {
         label: 'Fahrt starten',
         pendingLabel: 'Wird gestartet...',
-        action: () => driverStartRide(ride.id, driverId),
+        action: () => driverStartRide(ride.id),
         color: 'bg-purple-600 hover:bg-purple-700',
       };
     }
@@ -403,7 +405,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
       return {
         label: 'Bei Patient angekommen',
         pendingLabel: 'Wird aktualisiert...',
-        action: () => driverArrivedAtPickup(ride.id, driverId),
+        action: () => driverArrivedAtPickup(ride.id),
         color: 'bg-purple-600 hover:bg-purple-700',
       };
     }
@@ -411,7 +413,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
       return {
         label: 'Patient abgeholt',
         pendingLabel: 'Wird aktualisiert...',
-        action: () => driverPickedUpPatient(ride.id, driverId),
+        action: () => driverPickedUpPatient(ride.id),
         color: 'bg-purple-600 hover:bg-purple-700',
       };
     }
@@ -419,7 +421,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
       return {
         label: 'Am Ziel angekommen',
         pendingLabel: 'Wird aktualisiert...',
-        action: () => driverArrivedAtDestination(ride.id, driverId),
+        action: () => driverArrivedAtDestination(ride.id),
         color: 'bg-purple-600 hover:bg-purple-700',
       };
     }
@@ -427,7 +429,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
       return {
         label: 'Fahrt abschliessen',
         pendingLabel: 'Wird abgeschlossen...',
-        action: () => driverCompleteRide(ride.id, driverId),
+        action: () => driverCompleteRide(ride.id),
         color: 'bg-green-600 hover:bg-green-700',
       };
     }
@@ -498,7 +500,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
               <button
                 onClick={() => {
                   if (confirm('Fahrt direkt abschliessen? (Alle Zwischenschritte werden uebersprungen)')) {
-                    handleAction(() => driverQuickCompleteRide(ride.id, driverId));
+                    handleAction(() => driverQuickCompleteRide(ride.id));
                   }
                 }}
                 disabled={isPending}
@@ -710,7 +712,7 @@ export function DriverRideDetail({ ride, driverId }: DriverRideDetailProps) {
               variant="secondary"
               onClick={() => {
                 if (confirm('Fahrt wirklich ablehnen?')) {
-                  handleAction(() => driverRejectRide(ride.id, driverId), '/my-rides');
+                  handleAction(() => driverRejectRide(ride.id), '/my-rides');
                 }
               }}
               disabled={isPending}

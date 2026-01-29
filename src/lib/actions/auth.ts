@@ -140,7 +140,25 @@ export async function getSession() {
 // GET USER PROFILE WITH ROLE
 // =============================================================================
 
-export async function getUserProfile() {
+export type UserProfile = {
+  id: string;
+  email: string | undefined;
+  role: 'admin' | 'operator' | 'driver';
+  displayName: string | undefined;
+  driverId: string | null;
+};
+
+/**
+ * Gets the current user's profile with role information.
+ *
+ * SECURITY: This function throws an error if no profile exists.
+ * Every authenticated user MUST have a profile configured.
+ * The trigger `on_auth_user_created` should auto-create profiles for new users.
+ *
+ * @throws Error if user is not authenticated
+ * @throws Error if user profile is not configured
+ */
+export async function getUserProfile(): Promise<UserProfile | null> {
   const supabase = await createClient();
 
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -155,15 +173,29 @@ export async function getUserProfile() {
     .eq('id', user.id)
     .single();
 
-  if (profileError) {
-    // Profile might not exist yet if RLS prevents reading
-    // Return user with default role
-    return {
-      id: user.id,
-      email: user.email,
-      role: 'driver' as const,
-      displayName: user.email,
-    };
+  if (profileError || !profile) {
+    // SECURITY FIX: Do not return a fallback role.
+    // Missing profile indicates a configuration issue that must be fixed.
+    console.error(
+      `[AUTH] User ${user.id} has no profile. ` +
+      'This should have been created by the on_auth_user_created trigger. ' +
+      'Please run the migrate-users-to-profiles.sql script.'
+    );
+    throw new Error(
+      'Benutzerprofil nicht konfiguriert. Bitte kontaktieren Sie den Administrator.'
+    );
+  }
+
+  // Get driver_id if user is linked to a driver record
+  let driverId: string | null = null;
+  if (profile.role === 'driver') {
+    const { data: driver } = await supabase
+      .from('drivers')
+      .select('id')
+      .eq('user_id', user.id)
+      .single();
+
+    driverId = driver?.id || null;
   }
 
   return {
@@ -171,6 +203,7 @@ export async function getUserProfile() {
     email: user.email,
     role: profile.role as 'admin' | 'operator' | 'driver',
     displayName: profile.display_name || user.email,
+    driverId,
   };
 }
 

@@ -40,7 +40,9 @@ src/
 │   │   ├── rides/        # Ride CRUD, detail view with map
 │   │   ├── drivers/      # Driver CRUD, availability view (readonly)
 │   │   ├── patients/     # Patient CRUD with address autocomplete
-│   │   └── destinations/ # Destination CRUD with address autocomplete
+│   │   ├── destinations/ # Destination CRUD with address autocomplete
+│   │   └── admin/        # Admin-only routes
+│   │       └── logs/     # Application log viewer (Issue #58)
 │   ├── (driver)/         # Driver routes (mobile-first)
 │   │   ├── rides/        # Assigned rides, confirm/reject/start/complete
 │   │   └── availability/ # Availability grid & absence management
@@ -56,7 +58,8 @@ src/
 │   └── rides/            # RideDetailCard, RideList
 ├── lib/
 │   ├── supabase/         # Supabase client (client.ts, server.ts, middleware.ts)
-│   └── actions/          # Server actions for CRUD operations
+│   ├── actions/          # Server actions for CRUD operations
+│   └── logging/          # Centralized logging utility (Issue #56)
 └── types/                # TypeScript type definitions
 ```
 
@@ -138,6 +141,52 @@ Notifications are triggered automatically on:
 - `patient_picked_up` → Destination notified with ETA
 - `ride_completed` → Patient notified
 
+### Application Logging (Sprint 5-6)
+- `src/lib/logging/` - Centralized logging utility:
+  - `logger.ts` - Singleton logger with `log.info()`, `log.warn()`, `log.error()`
+  - `types.ts` - Type definitions for log entries, filters, and metadata
+  - `index.ts` - Public exports
+
+**Usage:**
+```typescript
+import { log, generateRequestId } from '@/lib/logging';
+
+// Basic logging
+log.info('Patient created', { feature: 'patients', route: 'createPatient' });
+log.warn('Rate limit approaching', { userId: '...', feature: 'api' });
+log.error(error, { feature: 'sms', route: '/api/notifications' });
+
+// With request correlation
+const requestId = generateRequestId();
+log.info('Request started', { requestId, route: '/api/rides' });
+log.info('Request completed', { requestId, durationMs: 150 });
+
+// Scoped child logger
+const smsLogger = log.child({ feature: 'sms', source: 'sms' });
+smsLogger.error(error, { payload: { to: '+41...' } });
+```
+
+**Log Metadata (all optional):**
+- `userId` - Authenticated user ID
+- `route` - HTTP route or server action name
+- `requestId` - UUID for correlating multiple logs
+- `feature` - Module name (rides, patients, sms, auth)
+- `source` - Code location (server-action, api-route, middleware)
+- `payload` - Additional structured data (auto-sanitized)
+- `errorCode` - Error code if applicable
+- `durationMs` - Performance timing
+
+**Security:**
+- Sensitive data (passwords, tokens, keys) is automatically masked with `[REDACTED]`
+- Logs are written to database AND Vercel console
+- Database writes are async and never block the application
+- Only admins can view logs via `/admin/logs`
+
+**Retention Policy:**
+- Logs older than 30 days are automatically deleted
+- Maximum 10,000 entries (older entries purged first)
+- Cleanup runs via scheduled database function
+
 ## Database
 
 Schema is in `supabase/schema.sql`. Run in Supabase SQL Editor to set up tables.
@@ -202,18 +251,74 @@ The codebase implements defense-in-depth security practices:
 3. **Rate Limiting**: Per-operation rate limits (e.g., 10 creates/min, 100 reads/min)
 4. **Soft Deletes**: Master data uses `is_active` flag instead of hard deletes
 5. **Error Handling**: Sensitive error details not exposed to client
+6. **Row Level Security (RLS)**: Database-level access control based on user roles
+7. **IDOR Prevention**: Driver actions derive user identity from session, never from client parameters
+
+### Row Level Security (RLS) Policies
+
+All tables have RLS enabled with role-based policies:
+
+**Profiles Table:**
+- Users can read their own profile
+- Only admins can read all profiles and modify them
+
+**Patients, Drivers, Destinations:**
+- Admin/Operator: Full read/write access
+- Drivers: Read-only access to patients for their assigned rides
+- Drivers can read their own driver record
+
+**Rides:**
+- Admin/Operator: Full read/write access
+- Drivers: Can read their assigned rides, can update status of their rides
+
+**Availability Blocks & Absences:**
+- Admin/Operator: Full read/write access
+- Drivers: Full access to their own records only
+
+### Driver Action Security (IDOR Prevention)
+
+All driver actions in `src/lib/actions/rides-driver.ts` derive the driver ID from the authenticated session:
+
+```typescript
+// SECURE: Driver ID from session
+async function getAuthenticatedDriverId(): Promise<string> {
+  const profile = await getUserProfile();
+  if (!profile?.driverId) throw new Error('Not authorized');
+  return profile.driverId;
+}
+
+// Action uses session-derived ID, not client parameter
+export async function driverConfirmRide(rideId: string): Promise<ActionResult>
+```
+
+This prevents IDOR (Insecure Direct Object Reference) attacks where a malicious driver could pass another driver's ID to access their rides.
+
+### Admin Client Usage
+
+The `createAdminClient()` function in `src/lib/supabase/admin.ts` bypasses RLS and should ONLY be used for:
+- Database migrations
+- Seeding scripts
+- One-time administrative scripts
+
+**Never use in application code.** If RLS is blocking a legitimate operation, fix the RLS policies instead.
 
 ### Security Utils
 - `src/lib/utils/sanitize.ts` - Input sanitization (search queries, IDs)
 - `src/lib/utils/rate-limit.ts` - Rate limiting implementation
 - `src/lib/validations/schemas.ts` - Zod schemas for all entities
+- `src/lib/supabase/admin.ts` - Admin client (scripts only, never in app code)
+
+### Security Scripts
+- `scripts/security/remove-secrets-from-git.sh` - Remove secrets from Git history
+- `scripts/security/rotate-secrets-guide.md` - Guide for rotating API keys
+- `scripts/security/migrate-users-to-profiles.sql` - Migrate existing users to profiles
+- `scripts/security/test-rls-policies.sql` - Verify RLS policies are working
 
 ## Still TODO
 
 - Recurring rides UI
-- RLS policies for role-based access
-- Notification logs database table (currently logs to console)
 - Ride reminder scheduler (cron job for pre-pickup reminders)
+- Enable pg_cron for automatic log cleanup (currently manual or via external cron)
 
 ## Language
 

@@ -1,8 +1,43 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
+import { getUserProfile } from './auth';
 import type { Driver, DriverWithAvailability, AvailabilityBlock, Absence } from '@/types';
+
+// =============================================================================
+// AUTHORIZATION HELPERS
+// =============================================================================
+
+/**
+ * Validates that the current user has permission to manage a driver's data.
+ * - Admins/Operators can manage any driver
+ * - Drivers can only manage their own data
+ *
+ * @throws Error if user is not authorized
+ */
+async function validateDriverManagementPermission(driverId: string): Promise<void> {
+  const profile = await getUserProfile();
+
+  if (!profile) {
+    throw new Error('Nicht authentifiziert');
+  }
+
+  // Admins and operators can manage any driver
+  if (profile.role === 'admin' || profile.role === 'operator') {
+    return;
+  }
+
+  // Drivers can only manage their own data
+  if (profile.role === 'driver') {
+    if (profile.driverId !== driverId) {
+      throw new Error('Zugriff verweigert: Sie koennen nur Ihre eigenen Daten verwalten');
+    }
+    return;
+  }
+
+  throw new Error('Zugriff verweigert');
+}
 
 export async function getDrivers(): Promise<Driver[]> {
   const supabase = await createClient();
@@ -136,12 +171,15 @@ export async function setAvailabilityBlock(data: CreateAvailabilityBlockData): P
 }
 
 export async function deleteAvailabilityBlock(id: string, driverId: string): Promise<void> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  // Validate authorization before proceeding
+  await validateDriverManagementPermission(driverId);
+
+  const supabase = await createClient();
   const { error } = await supabase
     .from('availability_blocks')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('driver_id', driverId); // Extra safety: ensure block belongs to this driver
 
   if (error) throw new Error(error.message);
   revalidatePath(`/drivers/${driverId}`);
@@ -157,8 +195,10 @@ export interface CreateAbsenceData {
 }
 
 export async function createAbsence(data: CreateAbsenceData): Promise<Absence> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  // Validate authorization before proceeding
+  await validateDriverManagementPermission(data.driver_id);
+
+  const supabase = await createClient();
   const { data: absence, error } = await supabase
     .from('absences')
     .insert(data)
@@ -172,12 +212,15 @@ export async function createAbsence(data: CreateAbsenceData): Promise<Absence> {
 }
 
 export async function deleteAbsence(id: string, driverId: string): Promise<void> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  // Validate authorization before proceeding
+  await validateDriverManagementPermission(driverId);
+
+  const supabase = await createClient();
   const { error } = await supabase
     .from('absences')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .eq('driver_id', driverId); // Extra safety: ensure absence belongs to this driver
 
   if (error) throw new Error(error.message);
   revalidatePath(`/drivers/${driverId}`);

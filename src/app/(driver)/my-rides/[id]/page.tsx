@@ -3,8 +3,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui';
 import { DriverRideDetail } from '@/components/rides';
 import { getDriverRide } from '@/lib/actions/rides-driver';
-import { getDriverByUserId } from '@/lib/actions/drivers-v2';
-import { createClient } from '@/lib/supabase/server';
+import { getUserProfile } from '@/lib/actions/auth';
 
 interface DriverRideDetailPageProps {
   params: Promise<{ id: string }>;
@@ -13,22 +12,19 @@ interface DriverRideDetailPageProps {
 export default async function DriverRideDetailPage({ params }: DriverRideDetailPageProps) {
   const { id } = await params;
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get user profile - this now validates driver access
+  const profile = await getUserProfile();
 
-  if (!user) {
-    redirect('/');
+  if (!profile) {
+    redirect('/login');
   }
 
-  // Get driver profile
-  const driver = await getDriverByUserId(user.id);
-
-  if (!driver) {
-    redirect('/');
+  if (profile.role !== 'driver') {
+    redirect('/dashboard');
   }
 
-  // Get ride with authorization check
-  const ride = await getDriverRide(id, driver.id);
+  // Get ride with authorization check (driver ID is derived from session in the action)
+  const ride = await getDriverRide(id);
 
   if (!ride) {
     notFound();
@@ -48,8 +44,8 @@ export default async function DriverRideDetailPage({ params }: DriverRideDetailP
         </Link>
       </div>
 
-      {/* Ride Detail Component */}
-      <DriverRideDetail ride={ride} driverId={driver.id} />
+      {/* Ride Detail Component - driverId is no longer needed as prop */}
+      <DriverRideDetail ride={ride} />
     </div>
   );
 }

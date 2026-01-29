@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { Card, StatusBadge } from '@/components/ui';
 import { DriverRideList } from '@/components/rides';
 import { getDriverRides } from '@/lib/actions/rides-driver';
-import { getDriverByUserId } from '@/lib/actions/drivers-v2';
-import { createClient } from '@/lib/supabase/server';
+import { getUserProfile } from '@/lib/actions/auth';
+import { getDriverById } from '@/lib/actions/drivers-v2';
 
 // =============================================================================
 // HELPER FUNCTIONS
@@ -49,17 +49,18 @@ function formatTime(isoString: string) {
 // =============================================================================
 
 export default async function DriverRidesPage() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Get user profile - this validates authentication and role
+  const profile = await getUserProfile();
 
-  if (!user) {
-    redirect('/');
+  if (!profile) {
+    redirect('/login');
   }
 
-  // Get driver profile
-  const driver = await getDriverByUserId(user.id);
+  if (profile.role !== 'driver') {
+    redirect('/dashboard');
+  }
 
-  if (!driver) {
+  if (!profile.driverId) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
         <div className="w-20 h-20 rounded-full bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center mb-6">
@@ -75,8 +76,15 @@ export default async function DriverRidesPage() {
     );
   }
 
-  // Get all rides for the driver
-  const allRides = await getDriverRides(driver.id);
+  // Get driver record for display name
+  const driver = await getDriverById(profile.driverId);
+
+  if (!driver) {
+    redirect('/');
+  }
+
+  // Get all rides for the driver (driver ID derived from session in the action)
+  const allRides = await getDriverRides();
   const dateRanges = getDateRanges();
 
   // Categorize rides
