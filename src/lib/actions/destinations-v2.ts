@@ -99,7 +99,7 @@ export async function searchDestinations(query: string): Promise<Destination[]> 
   // Rate limiting: get user ID for rate limit key
   const { data: { user } } = await supabase.auth.getUser();
   const rateLimitKey = createRateLimitKey(user?.id || null, 'search:destinations');
-  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.search);
+  const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.search);
 
   if (!rateLimitResult.success) {
     throw new RateLimitError(rateLimitResult.resetTime);

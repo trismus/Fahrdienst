@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAllowedOrigins } from '@/lib/utils/validate-env';
 
 interface RouteRequest {
   origin: { lat: number; lng: number } | string;
@@ -17,8 +18,80 @@ interface RouteResponse {
   polyline?: string;
 }
 
+/**
+ * Validates the request origin for CSRF/security purposes.
+ * Returns null if valid, or an error response if invalid.
+ */
+function validateOrigin(request: NextRequest): NextResponse | null {
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+
+  // In development, be more lenient
+  if (process.env.NODE_ENV === 'development') {
+    return null;
+  }
+
+  // Get allowed origins
+  const allowedOrigins = getAllowedOrigins();
+
+  // Check origin header
+  if (origin && !allowedOrigins.includes(origin)) {
+    console.warn(`[API] Rejected request from unauthorized origin: ${origin}`);
+    return NextResponse.json(
+      { error: 'Unauthorized origin' },
+      { status: 403 }
+    );
+  }
+
+  // If no origin, check referer as fallback
+  if (!origin && referer) {
+    try {
+      const refererUrl = new URL(referer);
+      const refererOrigin = refererUrl.origin;
+      if (!allowedOrigins.includes(refererOrigin)) {
+        console.warn(`[API] Rejected request from unauthorized referer: ${refererOrigin}`);
+        return NextResponse.json(
+          { error: 'Unauthorized origin' },
+          { status: 403 }
+        );
+      }
+    } catch {
+      // Invalid referer URL
+      console.warn('[API] Invalid referer header');
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Gets the Google Maps API key for server-side operations.
+ * NEVER falls back to client key - this prevents key abuse.
+ */
+function getServerApiKey(): string | null {
+  const serverKey = process.env.GOOGLE_MAPS_SERVER_API_KEY;
+
+  if (serverKey) {
+    return serverKey;
+  }
+
+  // Log warning but don't fall back to client key
+  console.error(
+    '[API] GOOGLE_MAPS_SERVER_API_KEY not configured. ' +
+      'Route calculations are disabled. Please configure a server-side API key.'
+  );
+
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Validate origin
+    const originError = validateOrigin(request);
+    if (originError) {
+      return originError;
+    }
+
     const { origin, destination } = (await request.json()) as RouteRequest;
 
     if (!origin || !destination) {
@@ -28,12 +101,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    // Get server API key - NEVER use client key
+    const apiKey = getServerApiKey();
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Google Maps API key not configured' },
-        { status: 500 }
+        { error: 'Service temporarily unavailable. Please try again later.' },
+        { status: 503 }
       );
     }
 
@@ -53,7 +127,8 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
 
     if (data.status !== 'OK') {
-      console.error('Google Directions API error:', data.status, data.error_message);
+      // Don't log full error details (may contain sensitive info)
+      console.error('[API] Google Directions API error:', data.status);
       return NextResponse.json(
         { error: `Route calculation failed: ${data.status}` },
         { status: 400 }
@@ -77,7 +152,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Route calculation error:', error);
+    // Don't expose internal error details
+    console.error('[API] Route calculation error:', error instanceof Error ? error.message : 'Unknown');
     return NextResponse.json(
       { error: 'Failed to calculate route' },
       { status: 500 }
@@ -88,6 +164,12 @@ export async function POST(request: NextRequest) {
 // Distance Matrix API for batch calculations
 export async function PUT(request: NextRequest) {
   try {
+    // Validate origin
+    const originError = validateOrigin(request);
+    if (originError) {
+      return originError;
+    }
+
     const { origins, destinations } = await request.json();
 
     if (!origins?.length || !destinations?.length) {
@@ -97,12 +179,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_SERVER_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    // Get server API key - NEVER use client key
+    const apiKey = getServerApiKey();
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Google Maps API key not configured' },
-        { status: 500 }
+        { error: 'Service temporarily unavailable. Please try again later.' },
+        { status: 503 }
       );
     }
 
@@ -121,6 +204,7 @@ export async function PUT(request: NextRequest) {
     const data = await response.json();
 
     if (data.status !== 'OK') {
+      console.error('[API] Distance matrix API error:', data.status);
       return NextResponse.json(
         { error: `Distance matrix calculation failed: ${data.status}` },
         { status: 400 }
@@ -142,7 +226,7 @@ export async function PUT(request: NextRequest) {
       matrix,
     });
   } catch (error) {
-    console.error('Distance matrix error:', error);
+    console.error('[API] Distance matrix error:', error instanceof Error ? error.message : 'Unknown');
     return NextResponse.json(
       { error: 'Failed to calculate distance matrix' },
       { status: 500 }

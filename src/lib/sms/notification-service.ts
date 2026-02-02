@@ -8,6 +8,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { maskPhoneNumber } from '@/lib/utils/mask-phone';
 import {
   type NotificationType,
   type NotificationContext,
@@ -148,15 +149,15 @@ async function logNotification(
   errorMessage?: string
 ): Promise<void> {
   // Note: This requires a notification_logs table to be created
-  // For now, we just log to console
+  // For now, we just log to console with GDPR-compliant phone masking
   console.log('[SMS] Notification log:', {
     rideId,
     notificationType,
     recipientType,
-    recipientPhone: recipientPhone.slice(0, -4) + '****', // Mask phone number
+    recipientPhone: maskPhoneNumber(recipientPhone), // GDPR-compliant masking
     success,
-    messageId,
-    errorMessage,
+    messageId: success ? messageId : undefined,
+    errorMessage: errorMessage ? errorMessage.substring(0, 100) : undefined, // Truncate error messages
     timestamp: new Date().toISOString(),
   });
 

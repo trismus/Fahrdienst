@@ -473,7 +473,7 @@ export async function createRide(input: CreateRideInput): Promise<Ride> {
   // Rate limiting
   const { data: { user } } = await supabase.auth.getUser();
   const rateLimitKey = createRateLimitKey(user?.id || null, 'rides:create');
-  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.create);
+  const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.create);
 
   if (!rateLimitResult.success) {
     throw new RateLimitError(rateLimitResult.resetTime);

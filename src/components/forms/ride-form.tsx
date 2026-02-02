@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select, Card, CardHeader, CardTitle } from '@/components/ui';
-import { createRide, updateRide, type CreateRideData } from '@/lib/actions/rides';
+import { createRide, updateRide, type CreateRideInput, type UpdateRideInput } from '@/lib/actions/rides-v2';
 import type { Ride, Patient, Driver, Destination, RideStatus } from '@/types';
 
 interface RideFormProps {
@@ -49,25 +49,42 @@ export function RideForm({ ride, patients, drivers, destinations }: RideFormProp
     setError(null);
 
     try {
-      const data: CreateRideData = {
-        patient_id: formData.patient_id,
-        destination_id: formData.destination_id,
-        pickup_time: new Date(formData.pickup_time).toISOString(),
-        arrival_time: new Date(formData.arrival_time).toISOString(),
-        status: formData.status,
-      };
-
-      if (formData.driver_id) {
-        data.driver_id = formData.driver_id;
-      }
-      if (formData.return_time) {
-        data.return_time = new Date(formData.return_time).toISOString();
-      }
-
       if (ride) {
-        await updateRide(ride.id, data);
+        // Update existing ride - use UpdateRideInput format
+        const updateData: UpdateRideInput = {
+          patientId: formData.patient_id,
+          destinationId: formData.destination_id,
+          pickupTime: new Date(formData.pickup_time).toISOString(),
+          arrivalTime: new Date(formData.arrival_time).toISOString(),
+          status: formData.status,
+        };
+
+        if (formData.driver_id) {
+          updateData.driverId = formData.driver_id;
+        }
+        if (formData.return_time) {
+          updateData.returnTime = new Date(formData.return_time).toISOString();
+        }
+
+        await updateRide(ride.id, updateData);
       } else {
-        await createRide(data);
+        // Create new ride - use CreateRideInput format
+        const createData: CreateRideInput = {
+          patientId: formData.patient_id,
+          destinationId: formData.destination_id,
+          pickupTime: new Date(formData.pickup_time).toISOString(),
+          arrivalTime: new Date(formData.arrival_time).toISOString(),
+          createReturnRide: false, // Default to no return ride
+        };
+
+        if (formData.driver_id) {
+          createData.driverId = formData.driver_id;
+        }
+        if (formData.return_time) {
+          createData.returnTime = new Date(formData.return_time).toISOString();
+        }
+
+        await createRide(createData);
       }
       router.push('/rides');
       router.refresh();

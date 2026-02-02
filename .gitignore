@@ -50,3 +50,5 @@ next-env.d.ts
 .vscode/
 *.swp
 *.swo
+credentials.json
+service-account.json

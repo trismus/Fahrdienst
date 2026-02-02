@@ -1,34 +1,17 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+/**
+ * @deprecated SECURITY: All functions in this file are deprecated.
+ * Use destinations-v2.ts instead which includes:
+ * - Input validation with Zod schemas
+ * - SQL injection prevention
+ * - Rate limiting
+ * - ID format validation
+ *
+ * These functions throw errors to prevent accidental usage.
+ */
+
 import type { Destination } from '@/types';
-
-export async function getDestinations(): Promise<Destination[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('destinations')
-    .select('*')
-    .order('name');
-
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-export async function getDestination(id: string): Promise<Destination | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('destinations')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw new Error(error.message);
-  }
-  return data;
-}
 
 export interface CreateDestinationData {
   name: string;
@@ -39,41 +22,44 @@ export interface CreateDestinationData {
   arrival_window_end: string;
 }
 
-export async function createDestination(data: CreateDestinationData): Promise<Destination> {
-  const supabase = await createClient();
-  const { data: destination, error } = await supabase
-    .from('destinations')
-    .insert(data)
-    .select()
-    .single();
+const DEPRECATION_ERROR = 'DEPRECATED: This function lacks security controls. Use the corresponding function from destinations-v2.ts instead.';
 
-  if (error) throw new Error(error.message);
-  revalidatePath('/destinations');
-  return destination;
+/**
+ * @deprecated Use getDestinations from destinations-v2.ts instead
+ * This function lacks proper security controls
+ */
+export async function getDestinations(): Promise<Destination[]> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-export async function updateDestination(id: string, data: Partial<CreateDestinationData>): Promise<Destination> {
-  const supabase = await createClient();
-  const { data: destination, error } = await supabase
-    .from('destinations')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/destinations');
-  revalidatePath(`/destinations/${id}`);
-  return destination;
+/**
+ * @deprecated Use getDestinationById from destinations-v2.ts instead
+ * This function lacks proper security controls
+ */
+export async function getDestination(_id: string): Promise<Destination | null> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-export async function deleteDestination(id: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('destinations')
-    .delete()
-    .eq('id', id);
+/**
+ * @deprecated Use createDestination from destinations-v2.ts instead
+ * This function lacks proper security controls (no input validation, no rate limiting)
+ */
+export async function createDestination(_data: CreateDestinationData): Promise<Destination> {
+  throw new Error(DEPRECATION_ERROR);
+}
 
-  if (error) throw new Error(error.message);
-  revalidatePath('/destinations');
+/**
+ * @deprecated Use updateDestination from destinations-v2.ts instead
+ * This function lacks proper security controls (no input validation, no ID validation)
+ */
+export async function updateDestination(_id: string, _data: Partial<CreateDestinationData>): Promise<Destination> {
+  throw new Error(DEPRECATION_ERROR);
+}
+
+/**
+ * @deprecated Use deactivateDestination from destinations-v2.ts instead
+ * This function performs hard delete instead of soft delete and lacks security controls
+ */
+export async function deleteDestination(_id: string): Promise<void> {
+  throw new Error(DEPRECATION_ERROR);
 }

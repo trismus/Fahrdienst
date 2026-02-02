@@ -1,34 +1,17 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
+/**
+ * @deprecated SECURITY: All functions in this file are deprecated.
+ * Use patients-v2.ts instead which includes:
+ * - Input validation with Zod schemas
+ * - SQL injection prevention
+ * - Rate limiting
+ * - ID format validation
+ *
+ * These functions throw errors to prevent accidental usage.
+ */
+
 import type { Patient } from '@/types';
-
-export async function getPatients(): Promise<Patient[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('patients')
-    .select('*')
-    .order('name');
-
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-export async function getPatient(id: string): Promise<Patient | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('patients')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw new Error(error.message);
-  }
-  return data;
-}
 
 export interface CreatePatientData {
   name: string;
@@ -40,41 +23,44 @@ export interface CreatePatientData {
   notes?: string;
 }
 
-export async function createPatient(data: CreatePatientData): Promise<Patient> {
-  const supabase = await createClient();
-  const { data: patient, error } = await supabase
-    .from('patients')
-    .insert(data)
-    .select()
-    .single();
+const DEPRECATION_ERROR = 'DEPRECATED: This function lacks security controls. Use the corresponding function from patients-v2.ts instead.';
 
-  if (error) throw new Error(error.message);
-  revalidatePath('/patients');
-  return patient;
+/**
+ * @deprecated Use getPatients from patients-v2.ts instead
+ * This function lacks proper security controls
+ */
+export async function getPatients(): Promise<Patient[]> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-export async function updatePatient(id: string, data: Partial<CreatePatientData>): Promise<Patient> {
-  const supabase = await createClient();
-  const { data: patient, error } = await supabase
-    .from('patients')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/patients');
-  revalidatePath(`/patients/${id}`);
-  return patient;
+/**
+ * @deprecated Use getPatientById from patients-v2.ts instead
+ * This function lacks proper security controls
+ */
+export async function getPatient(_id: string): Promise<Patient | null> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-export async function deletePatient(id: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('patients')
-    .delete()
-    .eq('id', id);
+/**
+ * @deprecated Use createPatient from patients-v2.ts instead
+ * This function lacks proper security controls (no input validation, no rate limiting)
+ */
+export async function createPatient(_data: CreatePatientData): Promise<Patient> {
+  throw new Error(DEPRECATION_ERROR);
+}
 
-  if (error) throw new Error(error.message);
-  revalidatePath('/patients');
+/**
+ * @deprecated Use updatePatient from patients-v2.ts instead
+ * This function lacks proper security controls (no input validation, no ID validation)
+ */
+export async function updatePatient(_id: string, _data: Partial<CreatePatientData>): Promise<Patient> {
+  throw new Error(DEPRECATION_ERROR);
+}
+
+/**
+ * @deprecated Use deactivatePatient from patients-v2.ts instead
+ * This function performs hard delete instead of soft delete and lacks security controls
+ */
+export async function deletePatient(_id: string): Promise<void> {
+  throw new Error(DEPRECATION_ERROR);
 }

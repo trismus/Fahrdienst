@@ -44,7 +44,7 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   // Rate limiting by IP or email
   const email = formData.get('email') as string;
   const rateLimitKey = createRateLimitKey(null, `auth:signin:${email}`);
-  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.login);
+  const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.login);
 
   if (!rateLimitResult.success) {
     return {

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, Button, StatusBadge } from '@/components/ui';
 import { RouteMap } from '@/components/maps';
-import { confirmRide, rejectRide, startRide, completeRide, cancelRide } from '@/lib/actions/rides';
+import { confirmRide, rejectRide, startRide, completeRide, cancelRide } from '@/lib/actions/rides-v2';
 import type { RideWithRelations } from '@/types';
 
 interface RideDetailCardProps {

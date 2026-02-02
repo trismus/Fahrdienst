@@ -5,6 +5,7 @@
  * Includes rate limiting and error handling.
  */
 
+import { maskPhoneNumber } from '@/lib/utils/mask-phone';
 import type { SmsMessage, SmsSendResult } from './types';
 
 // =============================================================================
@@ -190,11 +191,11 @@ async function sendViaTwilio(
 // =============================================================================
 
 async function sendMock(message: SmsMessage): Promise<SmsSendResult> {
-  // Log the message for development
+  // Log the message for development with GDPR-compliant masking
   console.log('=== MOCK SMS ===');
-  console.log(`To: ${message.to}`);
+  console.log(`To: ${maskPhoneNumber(message.to)}`); // Never log full phone numbers
   console.log(`Type: ${message.notificationType}`);
-  console.log(`Body: ${message.body}`);
+  console.log(`Body (preview): ${message.body.slice(0, 50)}...`); // Don't log full message body
   console.log('================');
 
   // Simulate network delay

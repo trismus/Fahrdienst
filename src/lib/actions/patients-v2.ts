@@ -80,7 +80,7 @@ export async function searchPatients(query: string): Promise<Patient[]> {
   // Rate limiting: get user ID for rate limit key
   const { data: { user } } = await supabase.auth.getUser();
   const rateLimitKey = createRateLimitKey(user?.id || null, 'search:patients');
-  const rateLimitResult = checkRateLimit(rateLimitKey, RATE_LIMITS.search);
+  const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.search);
 
   if (!rateLimitResult.success) {
     throw new RateLimitError(rateLimitResult.resetTime);

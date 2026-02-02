@@ -1,107 +1,33 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
-import { getUserProfile } from './auth';
-import type { Driver, DriverWithAvailability, AvailabilityBlock, Absence } from '@/types';
-
-// =============================================================================
-// AUTHORIZATION HELPERS
-// =============================================================================
-
 /**
- * Validates that the current user has permission to manage a driver's data.
- * - Admins/Operators can manage any driver
- * - Drivers can only manage their own data
+ * @deprecated SECURITY: Most functions in this file are deprecated.
+ * Use drivers-v2.ts instead which includes:
+ * - Input validation with Zod schemas
+ * - SQL injection prevention
+ * - Rate limiting
+ * - ID format validation
  *
- * @throws Error if user is not authorized
+ * The following functions still work for backwards compatibility:
+ * - setAvailabilityBlock (redirects to drivers-v2.ts)
+ * - deleteAvailabilityBlock (redirects to drivers-v2.ts)
+ * - createAbsence (redirects to drivers-v2.ts)
+ * - deleteAbsence (redirects to drivers-v2.ts)
  */
-async function validateDriverManagementPermission(driverId: string): Promise<void> {
-  const profile = await getUserProfile();
 
-  if (!profile) {
-    throw new Error('Nicht authentifiziert');
-  }
+import type { Driver, DriverWithAvailability, AvailabilityBlock, Absence } from '@/types';
+import {
+  createAvailabilityBlock as createAvailabilityBlockV2,
+  deleteAvailabilityBlock as deleteAvailabilityBlockV2,
+  createAbsence as createAbsenceV2,
+  deleteAbsence as deleteAbsenceV2,
+} from './drivers-v2';
 
-  // Admins and operators can manage any driver
-  if (profile.role === 'admin' || profile.role === 'operator') {
-    return;
-  }
+const DEPRECATION_ERROR = 'DEPRECATED: This function lacks security controls. Use the corresponding function from drivers-v2.ts instead.';
 
-  // Drivers can only manage their own data
-  if (profile.role === 'driver') {
-    if (profile.driverId !== driverId) {
-      throw new Error('Zugriff verweigert: Sie koennen nur Ihre eigenen Daten verwalten');
-    }
-    return;
-  }
-
-  throw new Error('Zugriff verweigert');
-}
-
-export async function getDrivers(): Promise<Driver[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('drivers')
-    .select('*')
-    .order('name');
-
-  if (error) throw new Error(error.message);
-  return data || [];
-}
-
-export async function getDriver(id: string): Promise<Driver | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('drivers')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    if (error.code === 'PGRST116') return null;
-    throw new Error(error.message);
-  }
-  return data;
-}
-
-export async function getDriverWithAvailability(id: string): Promise<DriverWithAvailability | null> {
-  const supabase = await createClient();
-
-  const { data: driver, error: driverError } = await supabase
-    .from('drivers')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (driverError) {
-    if (driverError.code === 'PGRST116') return null;
-    throw new Error(driverError.message);
-  }
-
-  const { data: blocks, error: blocksError } = await supabase
-    .from('availability_blocks')
-    .select('*')
-    .eq('driver_id', id)
-    .order('weekday')
-    .order('start_time');
-
-  if (blocksError) throw new Error(blocksError.message);
-
-  const { data: absences, error: absencesError } = await supabase
-    .from('absences')
-    .select('*')
-    .eq('driver_id', id)
-    .order('from_date');
-
-  if (absencesError) throw new Error(absencesError.message);
-
-  return {
-    ...driver,
-    availability_blocks: blocks || [],
-    absences: absences || [],
-  };
-}
+// =============================================================================
+// DEPRECATED FUNCTIONS - These throw errors
+// =============================================================================
 
 export interface CreateDriverData {
   name: string;
@@ -109,46 +35,52 @@ export interface CreateDriverData {
   email: string;
 }
 
-export async function createDriver(data: CreateDriverData): Promise<Driver> {
-  const supabase = await createClient();
-  const { data: driver, error } = await supabase
-    .from('drivers')
-    .insert(data)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/drivers');
-  return driver;
+/**
+ * @deprecated Use getDrivers from drivers-v2.ts instead
+ */
+export async function getDrivers(): Promise<Driver[]> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-export async function updateDriver(id: string, data: Partial<CreateDriverData>): Promise<Driver> {
-  const supabase = await createClient();
-  const { data: driver, error } = await supabase
-    .from('drivers')
-    .update(data)
-    .eq('id', id)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/drivers');
-  revalidatePath(`/drivers/${id}`);
-  return driver;
+/**
+ * @deprecated Use getDriverById from drivers-v2.ts instead
+ */
+export async function getDriver(_id: string): Promise<Driver | null> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-export async function deleteDriver(id: string): Promise<void> {
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('drivers')
-    .delete()
-    .eq('id', id);
-
-  if (error) throw new Error(error.message);
-  revalidatePath('/drivers');
+/**
+ * @deprecated Use getDriverById + getDriverAvailabilityBlocks + getDriverAbsences from drivers-v2.ts
+ */
+export async function getDriverWithAvailability(_id: string): Promise<DriverWithAvailability | null> {
+  throw new Error(DEPRECATION_ERROR);
 }
 
-// Availability Blocks
+/**
+ * @deprecated Use createDriver from drivers-v2.ts instead
+ */
+export async function createDriver(_data: CreateDriverData): Promise<Driver> {
+  throw new Error(DEPRECATION_ERROR);
+}
+
+/**
+ * @deprecated Use updateDriver from drivers-v2.ts instead
+ */
+export async function updateDriver(_id: string, _data: Partial<CreateDriverData>): Promise<Driver> {
+  throw new Error(DEPRECATION_ERROR);
+}
+
+/**
+ * @deprecated Use deactivateDriver from drivers-v2.ts instead
+ */
+export async function deleteDriver(_id: string): Promise<void> {
+  throw new Error(DEPRECATION_ERROR);
+}
+
+// =============================================================================
+// BACKWARDS COMPATIBLE FUNCTIONS - These redirect to v2
+// =============================================================================
+
 export interface CreateAvailabilityBlockData {
   driver_id: string;
   weekday: string;
@@ -156,34 +88,36 @@ export interface CreateAvailabilityBlockData {
   end_time: string;
 }
 
+/**
+ * Creates an availability block for a driver.
+ * Redirects to drivers-v2.ts for proper validation.
+ */
 export async function setAvailabilityBlock(data: CreateAvailabilityBlockData): Promise<AvailabilityBlock> {
-  const supabase = await createClient();
-  const { data: block, error } = await supabase
-    .from('availability_blocks')
-    .upsert(data, { onConflict: 'driver_id,weekday,start_time' })
-    .select()
-    .single();
+  const result = await createAvailabilityBlockV2({
+    driverId: data.driver_id,
+    weekday: data.weekday as 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday',
+    startTime: data.start_time,
+    endTime: data.end_time,
+  });
 
-  if (error) throw new Error(error.message);
-  revalidatePath(`/drivers/${data.driver_id}`);
-  revalidatePath('/availability');
-  return block;
+  // Map v2 result back to legacy format
+  return {
+    id: result.id,
+    driver_id: result.driverId,
+    weekday: result.weekday,
+    start_time: result.startTime,
+    end_time: result.endTime,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 }
 
+/**
+ * Deletes an availability block.
+ * Redirects to drivers-v2.ts for proper validation.
+ */
 export async function deleteAvailabilityBlock(id: string, driverId: string): Promise<void> {
-  // Validate authorization before proceeding
-  await validateDriverManagementPermission(driverId);
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('availability_blocks')
-    .delete()
-    .eq('id', id)
-    .eq('driver_id', driverId); // Extra safety: ensure block belongs to this driver
-
-  if (error) throw new Error(error.message);
-  revalidatePath(`/drivers/${driverId}`);
-  revalidatePath('/availability');
+  await deleteAvailabilityBlockV2(id, driverId);
 }
 
 // Absences
@@ -194,35 +128,34 @@ export interface CreateAbsenceData {
   reason?: string;
 }
 
+/**
+ * Creates an absence for a driver.
+ * Redirects to drivers-v2.ts for proper validation.
+ */
 export async function createAbsence(data: CreateAbsenceData): Promise<Absence> {
-  // Validate authorization before proceeding
-  await validateDriverManagementPermission(data.driver_id);
+  const result = await createAbsenceV2({
+    driverId: data.driver_id,
+    fromDate: data.from_date,
+    toDate: data.to_date,
+    reason: data.reason,
+  });
 
-  const supabase = await createClient();
-  const { data: absence, error } = await supabase
-    .from('absences')
-    .insert(data)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  revalidatePath(`/drivers/${data.driver_id}`);
-  revalidatePath('/availability');
-  return absence;
+  // Map v2 result back to legacy format
+  return {
+    id: result.id,
+    driver_id: result.driverId,
+    from_date: result.fromDate,
+    to_date: result.toDate,
+    reason: result.reason || undefined,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 }
 
+/**
+ * Deletes an absence.
+ * Redirects to drivers-v2.ts for proper validation.
+ */
 export async function deleteAbsence(id: string, driverId: string): Promise<void> {
-  // Validate authorization before proceeding
-  await validateDriverManagementPermission(driverId);
-
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('absences')
-    .delete()
-    .eq('id', id)
-    .eq('driver_id', driverId); // Extra safety: ensure absence belongs to this driver
-
-  if (error) throw new Error(error.message);
-  revalidatePath(`/drivers/${driverId}`);
-  revalidatePath('/availability');
+  await deleteAbsenceV2(id, driverId);
 }

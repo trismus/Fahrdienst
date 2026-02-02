@@ -87,9 +87,11 @@ For in_progress rides, granular tracking via substatus:
 ## Key Components
 
 ### Server Actions (`src/lib/actions/`)
-All CRUD operations use Next.js Server Actions with automatic revalidation. The codebase has two versions:
-- Original versions: `patients.ts`, `drivers.ts`, `destinations.ts`, `rides.ts`
-- V2 versions with security hardening: `patients-v2.ts`, `drivers-v2.ts`, `destinations-v2.ts`
+All CRUD operations use Next.js Server Actions with automatic revalidation.
+
+**IMPORTANT: Only use v2 modules for new code!**
+- `patients-v2.ts`, `drivers-v2.ts`, `destinations-v2.ts`, `rides-v2.ts`
+- Original versions (`patients.ts`, etc.) are **deprecated** and throw errors
 
 **V2 Server Actions** include:
 - **Input validation** using Zod schemas (via `src/lib/validations/schemas.ts`)
@@ -199,14 +201,26 @@ Schema is in `supabase/schema.sql`. Run in Supabase SQL Editor to set up tables.
 ## Environment Variables
 
 Copy `.env.local.example` to `.env.local` and configure:
+
+**Required:**
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous key
-- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` - Client-side Google Maps key
-- `GOOGLE_MAPS_SERVER_API_KEY` - Server-side Google Maps key (optional)
+
+**Google Maps:**
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` - Client-side key (restricted to Maps JS API, Places)
+- `GOOGLE_MAPS_SERVER_API_KEY` - Server-side key (restricted to Directions, Distance Matrix)
+
+**SMS (optional):**
 - `SMS_ENABLED` - Set to 'true' to enable SMS sending
 - `TWILIO_ACCOUNT_SID` - Twilio account SID
 - `TWILIO_AUTH_TOKEN` - Twilio auth token
 - `TWILIO_FROM_NUMBER` - Twilio phone number (E.164 format)
+
+**Rate Limiting (optional, recommended for production):**
+- `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL
+- `UPSTASH_REDIS_REST_TOKEN` - Upstash Redis REST token
+
+**Security Note:** See `scripts/security/configure-api-keys.md` for proper API key configuration.
 
 ## Design System
 
@@ -304,15 +318,58 @@ The `createAdminClient()` function in `src/lib/supabase/admin.ts` bypasses RLS a
 
 ### Security Utils
 - `src/lib/utils/sanitize.ts` - Input sanitization (search queries, IDs)
-- `src/lib/utils/rate-limit.ts` - Rate limiting implementation
+- `src/lib/utils/rate-limit.ts` - Rate limiting (in-memory or Redis)
+- `src/lib/utils/rate-limit-redis.ts` - Distributed rate limiting with Upstash Redis
+- `src/lib/utils/mask-phone.ts` - GDPR-compliant phone number masking for logs
+- `src/lib/utils/validate-env.ts` - Environment variable validation
+- `src/lib/utils/csrf.ts` - CSRF token generation and validation
 - `src/lib/validations/schemas.ts` - Zod schemas for all entities
 - `src/lib/supabase/admin.ts` - Admin client (scripts only, never in app code)
+
+### Security Headers
+Configured in `next.config.ts`:
+- **Content Security Policy (CSP)**: Prevents XSS attacks
+- **X-Frame-Options**: Prevents clickjacking
+- **X-Content-Type-Options**: Prevents MIME sniffing
+- **Referrer-Policy**: Controls referrer information
+- **Permissions-Policy**: Disables unnecessary browser features
+- **Strict-Transport-Security**: Forces HTTPS (production only)
+
+### CSRF Protection
+Implemented via:
+- **SameSite cookies**: All session cookies use `sameSite: 'lax'`
+- **Secure cookies**: HTTPS-only in production
+- **HttpOnly cookies**: Prevents JavaScript access
+- CSRF token utility available for high-security operations
+
+### Phone Number Masking (GDPR)
+All phone numbers in logs are masked:
+```typescript
+import { maskPhoneNumber } from '@/lib/utils/mask-phone';
+// +41791234567 -> +41*******67
+console.log('Phone:', maskPhoneNumber(phone));
+```
+
+### Distributed Rate Limiting
+For serverless (Vercel), use Upstash Redis:
+1. Install: `npm install @upstash/redis`
+2. Set env vars: `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
+3. See `scripts/security/setup-rate-limiting.md` for details
+
+Falls back to in-memory rate limiting if Redis not configured.
+
+### API Security
+- Origin validation on API routes (validates `Origin` and `Referer` headers)
+- Server API keys never exposed to client
+- CSP violation reporting endpoint: `/api/csp-report`
 
 ### Security Scripts
 - `scripts/security/remove-secrets-from-git.sh` - Remove secrets from Git history
 - `scripts/security/rotate-secrets-guide.md` - Guide for rotating API keys
 - `scripts/security/migrate-users-to-profiles.sql` - Migrate existing users to profiles
 - `scripts/security/test-rls-policies.sql` - Verify RLS policies are working
+- `scripts/security/configure-api-keys.md` - Google Maps API key configuration
+- `scripts/security/setup-rate-limiting.md` - Distributed rate limiting setup
 
 ## Still TODO
 

@@ -12,6 +12,30 @@ const publicRoutes = ['/', '/login'];
 // const dispatcherRoutes = ['/dashboard', '/rides', '/drivers', '/patients', '/destinations'];
 // const driverRoutes = ['/my-rides', '/my-availability'];
 
+/**
+ * Secure cookie options for CSRF protection.
+ * Applied to all Supabase session cookies.
+ */
+function getSecureCookieOptions(
+  baseOptions?: Partial<ResponseCookie>
+): Partial<ResponseCookie> {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  return {
+    ...baseOptions,
+    // CSRF Protection: SameSite prevents cross-site request forgery
+    // 'lax' allows cookies on top-level navigations (good UX)
+    // 'strict' would be more secure but breaks some flows
+    sameSite: 'lax' as const,
+    // Only send cookies over HTTPS in production
+    secure: isProduction,
+    // Prevent JavaScript access to cookies (XSS protection)
+    httpOnly: true,
+    // Ensure cookie is sent with all requests to the domain
+    path: '/',
+  };
+}
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -32,9 +56,11 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse = NextResponse.next({
             request,
           });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            // Apply secure cookie options
+            const secureOptions = getSecureCookieOptions(options);
+            supabaseResponse.cookies.set(name, value, secureOptions);
+          });
         },
       },
     }
@@ -62,5 +88,29 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
+  // Add security headers to response
+  addSecurityHeaders(supabaseResponse);
+
   return supabaseResponse;
+}
+
+/**
+ * Adds security headers to the response.
+ * Note: Some headers are also set in next.config.ts for static files.
+ */
+function addSecurityHeaders(response: NextResponse): void {
+  // Prevent clickjacking
+  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+
+  // Prevent MIME type sniffing
+  response.headers.set('X-Content-Type-Options', 'nosniff');
+
+  // Control referrer information
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+  // Disable certain browser features
+  response.headers.set(
+    'Permissions-Policy',
+    'camera=(), microphone=(), geolocation=(self)'
+  );
 }
