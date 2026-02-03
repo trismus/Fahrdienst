@@ -108,7 +108,7 @@ CREATE INDEX idx_rides_destination_id ON rides(destination_id);
 CREATE INDEX idx_rides_pickup_time ON rides(pickup_time);
 CREATE INDEX idx_rides_status ON rides(status);
 CREATE INDEX idx_rides_recurrence_group ON rides(recurrence_group) WHERE recurrence_group IS NOT NULL;
-CREATE INDEX idx_rides_pickup_date ON rides(DATE(pickup_time));
+-- Note: DATE(pickup_time) index removed - not IMMUTABLE on TIMESTAMPTZ.
 
 -- Availability blocks
 CREATE INDEX idx_availability_driver_id ON availability_blocks(driver_id);

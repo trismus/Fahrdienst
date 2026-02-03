@@ -316,7 +316,8 @@ CREATE INDEX idx_rides_destination_id ON rides(destination_id);
 CREATE INDEX idx_rides_pickup_time ON rides(pickup_time);
 CREATE INDEX idx_rides_status ON rides(status);
 CREATE INDEX idx_rides_recurrence_group ON rides(recurrence_group) WHERE recurrence_group IS NOT NULL;
-CREATE INDEX idx_rides_pickup_date ON rides(DATE(pickup_time));
+-- Note: DATE(pickup_time) index removed - not IMMUTABLE on TIMESTAMPTZ.
+-- Use idx_rides_pickup_time and idx_rides_pickup_status for date range queries.
 CREATE INDEX idx_rides_started_at ON rides(started_at) WHERE started_at IS NOT NULL AND completed_at IS NULL;
 CREATE INDEX idx_rides_completed_at ON rides(completed_at) WHERE completed_at IS NOT NULL;
 CREATE INDEX idx_rides_driver_status ON rides(driver_id, status);
