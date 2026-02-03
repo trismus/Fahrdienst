@@ -50,11 +50,12 @@ src/
 │       ├── routes/       # POST: Directions API, PUT: Distance Matrix
 │       └── notifications/ # Email/SMS notifications (stub)
 ├── components/
-│   ├── ui/               # Button, Input, Select, Card, Badge, Table
+│   ├── ui/               # Button, Input, Select, Card, Badge, Table, Modal
 │   ├── forms/            # PatientForm, DriverForm, DestinationForm, RideForm
 │   ├── maps/             # AddressAutocomplete, RouteMap
 │   ├── calendar/         # CalendarView (day/week/month)
 │   ├── availability/     # AvailabilityGrid, AbsenceList
+│   ├── feedback/         # FeedbackButton (FAB + modal, GitHub Issues)
 │   └── rides/            # RideDetailCard, RideList
 ├── lib/
 │   ├── supabase/         # Supabase client (client.ts, server.ts, middleware.ts)
@@ -104,6 +105,7 @@ Key functions:
 - `drivers-v2.ts` - getDrivers, getDriverById, searchDrivers, createDriver, updateDriver, softDeleteDriver
 - `destinations-v2.ts` - getDestinations, getDestinationById, searchDestinations, createDestination, updateDestination, softDeleteDestination
 - `rides-v2.ts` - getRides, getRideById, getRideStats, createRide, updateRide, cancelRide
+- `feedback.ts` - submitFeedback (creates GitHub Issues, rate limited 3/hr/user)
 - `rides-driver.ts` - Driver-specific actions with full execution workflow:
   - `getDriverRides`, `getDriverRide` - Fetch rides for driver
   - `driverConfirmRide`, `driverRejectRide` - Confirm/reject assignments
@@ -189,6 +191,23 @@ smsLogger.error(error, { payload: { to: '+41...' } });
 - Maximum 10,000 entries (older entries purged first)
 - Cleanup runs via scheduled database function
 
+### In-App Feedback (GitHub Issues)
+- `src/components/feedback/feedback-button.tsx` - Floating action button (FAB) + modal form
+- `src/components/ui/modal.tsx` - Reusable modal (backdrop click, Escape, scroll lock, `z-[60]`)
+- `src/lib/actions/feedback.ts` - Server action `submitFeedback()`
+
+**How it works:**
+- FAB visible on all pages (dispatcher + driver layouts), positioned above mobile bottom-nav
+- Users select type (Fehlermeldung/Funktionswunsch), enter title + description
+- Submission creates a GitHub Issue via API with labels (`bug`/`enhancement` + `user-feedback`)
+- Issue body includes metadata: user name, role, page URL, browser, timestamp
+- Rate limited to 3 submissions per hour per user
+- Graceful fallback when `GITHUB_FEEDBACK_TOKEN` is not configured
+
+**Env vars (optional):**
+- `GITHUB_FEEDBACK_TOKEN` - GitHub PAT with `repo` scope
+- `GITHUB_FEEDBACK_REPO` - Repository in `owner/repo` format
+
 ## Database
 
 Schema is in `supabase/schema.sql`. Run in Supabase SQL Editor to set up tables.
@@ -215,6 +234,10 @@ Copy `.env.local.example` to `.env.local` and configure:
 - `TWILIO_ACCOUNT_SID` - Twilio account SID
 - `TWILIO_AUTH_TOKEN` - Twilio auth token
 - `TWILIO_FROM_NUMBER` - Twilio phone number (E.164 format)
+
+**Feedback (optional):**
+- `GITHUB_FEEDBACK_TOKEN` - GitHub PAT with `repo` scope for creating issues
+- `GITHUB_FEEDBACK_REPO` - Target repository in `owner/repo` format
 
 **Rate Limiting (optional, recommended for production):**
 - `UPSTASH_REDIS_REST_URL` - Upstash Redis REST URL
