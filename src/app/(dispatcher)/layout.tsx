@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getUserProfile, signOut } from '@/lib/actions/auth';
 import { GlobalSearch } from '@/components/search';
+import { FeedbackButton } from '@/components/feedback/feedback-button';
 
 // Sidebar navigation items
 const navItems = [
@@ -209,6 +210,7 @@ export default async function DispatcherLayout({
           {children}
         </div>
       </main>
+      <FeedbackButton />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getUserProfile, signOut } from '@/lib/actions/auth';
+import { FeedbackButton } from '@/components/feedback/feedback-button';
 
 // =============================================================================
 // DRIVER LAYOUT
@@ -128,6 +129,7 @@ export default async function DriverLayout({
 
       {/* Spacer for bottom nav on mobile */}
       <div className="sm:hidden h-20" />
+      <FeedbackButton />
     </div>
   );
 }
