@@ -135,85 +135,12 @@ alter table rides enable row level security;
 alter table availability_blocks enable row level security;
 alter table absences enable row level security;
 
--- TODO: Define RLS policies based on user roles
--- For now, allow authenticated users to read all data
-create policy "Authenticated users can read patients"
-  on patients for select to authenticated using (true);
-
-create policy "Authenticated users can read drivers"
-  on drivers for select to authenticated using (true);
-
-create policy "Authenticated users can read destinations"
-  on destinations for select to authenticated using (true);
-
-create policy "Authenticated users can read rides"
-  on rides for select to authenticated using (true);
-
-create policy "Authenticated users can read availability_blocks"
-  on availability_blocks for select to authenticated using (true);
-
-create policy "Authenticated users can read absences"
-  on absences for select to authenticated using (true);
-
--- Write policies for authenticated users
--- TODO: Replace with role-based policies (dispatcher/driver) in production
-
--- Patients write policies
-create policy "Authenticated users can insert patients"
-  on patients for insert to authenticated with check (true);
-
-create policy "Authenticated users can update patients"
-  on patients for update to authenticated using (true);
-
-create policy "Authenticated users can delete patients"
-  on patients for delete to authenticated using (true);
-
--- Drivers write policies
-create policy "Authenticated users can insert drivers"
-  on drivers for insert to authenticated with check (true);
-
-create policy "Authenticated users can update drivers"
-  on drivers for update to authenticated using (true);
-
-create policy "Authenticated users can delete drivers"
-  on drivers for delete to authenticated using (true);
-
--- Destinations write policies
-create policy "Authenticated users can insert destinations"
-  on destinations for insert to authenticated with check (true);
-
-create policy "Authenticated users can update destinations"
-  on destinations for update to authenticated using (true);
-
-create policy "Authenticated users can delete destinations"
-  on destinations for delete to authenticated using (true);
-
--- Rides write policies
-create policy "Authenticated users can insert rides"
-  on rides for insert to authenticated with check (true);
-
-create policy "Authenticated users can update rides"
-  on rides for update to authenticated using (true);
-
-create policy "Authenticated users can delete rides"
-  on rides for delete to authenticated using (true);
-
--- Availability blocks write policies
-create policy "Authenticated users can insert availability_blocks"
-  on availability_blocks for insert to authenticated with check (true);
-
-create policy "Authenticated users can update availability_blocks"
-  on availability_blocks for update to authenticated using (true);
-
-create policy "Authenticated users can delete availability_blocks"
-  on availability_blocks for delete to authenticated using (true);
-
--- Absences write policies
-create policy "Authenticated users can insert absences"
-  on absences for insert to authenticated with check (true);
-
-create policy "Authenticated users can update absences"
-  on absences for update to authenticated using (true);
-
-create policy "Authenticated users can delete absences"
-  on absences for delete to authenticated using (true);
+-- NOTE: Role-based RLS policies are defined in the migration files:
+-- - 001_master_data.sql (profiles, patients, drivers, destinations)
+-- - 004_rides_and_availability.sql (rides, availability_blocks, absences)
+-- - 006_rls_policy_improvements.sql (driver patient access, driver phone update)
+-- - 008_fix_rls_policies.sql (delete policies, cleanup permissive policies)
+-- - 009_fix_driver_admin_read_policy.sql (admin access to inactive drivers)
+--
+-- DO NOT add permissive policies (using (true)) here.
+-- For fresh setups, run the migration files in order after this schema.

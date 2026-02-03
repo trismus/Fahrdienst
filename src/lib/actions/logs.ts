@@ -7,7 +7,7 @@
  * Security: Only admins can access logs (sensitive data)
  */
 
-import { createAdminClient } from '@/lib/supabase/admin';
+import { createClient } from '@/lib/supabase/server';
 import { getUserProfile } from './auth';
 import { z } from 'zod';
 import {
@@ -112,8 +112,7 @@ export async function getLogs(
   }
   const { page, pageSize } = paginationResult.data;
 
-  // Use admin client to bypass RLS (we've already verified admin role)
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   // Build query
   let query = supabase
@@ -203,8 +202,7 @@ export async function getLogById(id: string): Promise<LogEntry | null> {
   // Validate ID format
   const validId = validateId(id, 'log');
 
-  // Use admin client
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('application_logs')
@@ -230,8 +228,7 @@ export async function getLogStats(): Promise<LogStats> {
   // Verify admin access
   await requireAdmin();
 
-  // Use admin client
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   // Use the database function for stats
   const { data, error } = await supabase.rpc('get_log_stats');
@@ -261,8 +258,7 @@ export async function getLogSources(): Promise<string[]> {
   // Verify admin access
   await requireAdmin();
 
-  // Use admin client
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('application_logs')
@@ -293,8 +289,7 @@ export async function getLogFeatures(): Promise<string[]> {
   // Verify admin access
   await requireAdmin();
 
-  // Use admin client
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase
     .from('application_logs')
@@ -325,8 +320,7 @@ export async function triggerLogCleanup(): Promise<number> {
   // Verify admin access
   await requireAdmin();
 
-  // Use admin client
-  const supabase = createAdminClient();
+  const supabase = await createClient();
 
   const { data, error } = await supabase.rpc('cleanup_application_logs');
 
