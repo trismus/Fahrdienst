@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { createAdminClient } from '@/lib/supabase/admin';
 import {
   Driver,
   DriverRow,
@@ -503,8 +502,7 @@ export async function createAvailabilityBlock(input: {
   startTime: string; // HH:MM
   endTime: string; // HH:MM
 }): Promise<AvailabilityBlock> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const validDriverId = validateId(input.driverId, 'driver');
 
   const { data, error } = await supabase
@@ -536,8 +534,7 @@ export async function createAvailabilityBlock(input: {
 // =============================================================================
 
 export async function deleteAvailabilityBlock(id: string, driverId: string): Promise<void> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const validId = validateId(id, 'availability_block');
   const validDriverId = validateId(driverId, 'driver');
 
@@ -562,8 +559,7 @@ export async function createAbsence(input: {
   toDate: string; // YYYY-MM-DD
   reason?: string;
 }): Promise<Absence> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const validDriverId = validateId(input.driverId, 'driver');
 
   // Validate dates
@@ -600,8 +596,7 @@ export async function createAbsence(input: {
 // =============================================================================
 
 export async function deleteAbsence(id: string, driverId: string): Promise<void> {
-  // WORKAROUND: Use admin client to bypass RLS until policies are configured
-  const supabase = createAdminClient();
+  const supabase = await createClient();
   const validId = validateId(id, 'absence');
   const validDriverId = validateId(driverId, 'driver');
 

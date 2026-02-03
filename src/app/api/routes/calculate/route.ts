@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAllowedOrigins } from '@/lib/utils/validate-env';
+import { checkRateLimit, createRateLimitKey, RATE_LIMITS, getRateLimitHeaders } from '@/lib/utils/rate-limit';
 
 interface RouteRequest {
   origin: { lat: number; lng: number } | string;
@@ -92,6 +93,17 @@ export async function POST(request: NextRequest) {
       return originError;
     }
 
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rateLimitKey = createRateLimitKey(null, 'api-route-calculate', ip);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.api);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+      );
+    }
+
     const { origin, destination } = (await request.json()) as RouteRequest;
 
     if (!origin || !destination) {
@@ -168,6 +180,17 @@ export async function PUT(request: NextRequest) {
     const originError = validateOrigin(request);
     if (originError) {
       return originError;
+    }
+
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const rateLimitKey = createRateLimitKey(null, 'api-route-matrix', ip);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.api);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: getRateLimitHeaders(rateLimitResult) }
+      );
     }
 
     const { origins, destinations } = await request.json();

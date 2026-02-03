@@ -10,6 +10,7 @@
  */
 
 import type { LogLevel, LogMeta, LogSource } from './types';
+import { sanitizeLogMessage, looksLikePhoneNumber, maskPhoneNumber } from '@/lib/utils/mask-phone';
 
 // =============================================================================
 // CONFIGURATION
@@ -52,10 +53,32 @@ const MAX_ARRAY_LENGTH = 100;
 // =============================================================================
 
 /**
+ * Patterns that indicate phone number fields
+ * Values matching these keys will be masked with maskPhoneNumber()
+ */
+const PHONE_FIELD_PATTERNS = [
+  /phone/i,
+  /telefon/i,
+  /mobile/i,
+  /handy/i,
+  /sms/i,
+  /recipient/i,
+  /from_number/i,
+  /to_number/i,
+];
+
+/**
  * Check if a key name indicates sensitive data
  */
 function isSensitiveKey(key: string): boolean {
   return SENSITIVE_PATTERNS.some((pattern) => pattern.test(key));
+}
+
+/**
+ * Check if a key name indicates a phone number field
+ */
+function isPhoneField(key: string): boolean {
+  return PHONE_FIELD_PATTERNS.some((pattern) => pattern.test(key));
 }
 
 /**
@@ -90,6 +113,8 @@ function sanitizeValue(value: unknown, depth: number = 0): unknown {
     for (const [key, val] of Object.entries(value)) {
       if (isSensitiveKey(key)) {
         sanitized[key] = '[REDACTED]';
+      } else if (isPhoneField(key) && typeof val === 'string') {
+        sanitized[key] = maskPhoneNumber(val);
       } else {
         sanitized[key] = sanitizeValue(val, depth + 1);
       }
@@ -98,11 +123,15 @@ function sanitizeValue(value: unknown, depth: number = 0): unknown {
     return sanitized;
   }
 
-  // Handle strings - check for embedded secrets
+  // Handle strings - check for embedded phone numbers and secrets
   if (typeof value === 'string') {
     // Truncate long strings
     if (value.length > MAX_MESSAGE_LENGTH) {
       return value.substring(0, MAX_MESSAGE_LENGTH) + '...[truncated]';
+    }
+    // Mask standalone phone numbers
+    if (looksLikePhoneNumber(value)) {
+      return maskPhoneNumber(value);
     }
     return value;
   }
@@ -283,8 +312,11 @@ class Logger {
     stackTrace?: string,
     error?: Error
   ): void {
+    // Sanitize phone numbers from message (GDPR)
+    const sanitizedMessage = sanitizeLogMessage(message);
+
     // Always write to console first (synchronous, never fails)
-    writeToConsole(level, message, meta, error);
+    writeToConsole(level, sanitizedMessage, meta, error);
 
     // Build sanitized metadata
     const sanitizedPayload = meta?.payload ? sanitizeMetadata(meta.payload) : {};
@@ -304,7 +336,7 @@ class Logger {
     // Using setImmediate/setTimeout to ensure it doesn't block
     const dbEntry = {
       level,
-      message: message.substring(0, MAX_MESSAGE_LENGTH),
+      message: sanitizedMessage.substring(0, MAX_MESSAGE_LENGTH),
       stackTrace,
       source: meta?.source,
       route: meta?.route,
