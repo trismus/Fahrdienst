@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: In-App Feedback
+    url: https://fahrdienst.vercel.app
+    about: Feedback direkt aus der Anwendung senden (Floating Button unten rechts)
