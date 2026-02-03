@@ -212,7 +212,13 @@ smsLogger.error(error, { payload: { to: '+41...' } });
 
 ### Setup
 
-For a fresh Supabase project, run **`supabase/consolidated-schema.sql`** in the SQL Editor. This single idempotent script contains the complete database (tables, indexes, functions, triggers, RLS policies). It consolidates all 10 numbered migrations, security fixes, and ad-hoc patches.
+For a complete fresh setup (schema + test data + demo users), run **`supabase/init-database.sql`** in the SQL Editor. This script:
+1. Drops all existing objects (clean slate)
+2. Creates the full schema (tables, indexes, functions, triggers, RLS)
+3. Seeds test data (5 patients, 3 drivers, 7 destinations, availability blocks)
+4. Configures demo users (replace `REPLACE_ME` UUIDs with actual Auth user IDs)
+
+For schema-only setup (no seed data), use **`supabase/consolidated-schema.sql`** instead.
 
 Individual migration files remain in `supabase/migrations/` for reference but are no longer needed for setup.
 
