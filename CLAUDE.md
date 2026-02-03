@@ -210,7 +210,11 @@ smsLogger.error(error, { payload: { to: '+41...' } });
 
 ## Database
 
-Schema is in `supabase/schema.sql`. Run in Supabase SQL Editor to set up tables.
+### Setup
+
+For a fresh Supabase project, run **`supabase/consolidated-schema.sql`** in the SQL Editor. This single idempotent script contains the complete database (tables, indexes, functions, triggers, RLS policies). It consolidates all 10 numbered migrations, security fixes, and ad-hoc patches.
+
+Individual migration files remain in `supabase/migrations/` for reference but are no longer needed for setup.
 
 ### Important Notes
 - All master data tables (patients, drivers, destinations) use **soft delete** pattern with `is_active` flag
