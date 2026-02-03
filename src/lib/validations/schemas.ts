@@ -176,6 +176,34 @@ export type CreateDestinationInput = z.infer<typeof createDestinationSchema>;
 export type UpdateDestinationInput = z.infer<typeof updateDestinationSchema>;
 
 // =============================================================================
+// USER SCHEMAS
+// =============================================================================
+
+export const userRoleSchema = z.enum(['admin', 'operator', 'driver']);
+
+export const createUserSchema = z.object({
+  email: z.string().email('Bitte geben Sie eine gültige E-Mail-Adresse ein').max(255),
+  password: z.string().min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein').max(128),
+  displayName: sanitizedString(200),
+  role: userRoleSchema,
+  driverId: z.string().uuid().optional().nullable(),
+});
+
+export const updateUserSchema = z.object({
+  displayName: sanitizedString(200).optional(),
+  role: userRoleSchema.optional(),
+  driverId: z.string().uuid().optional().nullable(),
+});
+
+export const resetPasswordSchema = z.object({
+  password: z.string().min(8, 'Das Passwort muss mindestens 8 Zeichen lang sein').max(128),
+});
+
+export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+// =============================================================================
 // VALIDATION HELPER
 // =============================================================================
 
