@@ -2,7 +2,7 @@
 
 **Version**: 1.0
 **Product Owner**: Greg
-**Letzte Aktualisierung**: 2026-01-28
+**Letzte Aktualisierung**: 2026-02-03
 
 ---
 
@@ -16,9 +16,9 @@ Eine webbasierte Dispatching-Plattform für nicht-notfallmäßige Patiententrans
 
 | Release | Zeitraum | Ziel | Status |
 |---------|----------|------|--------|
-| **MVP 0.1** | Sprint 1-2 (Woche 1-4) | Dispatcher kann disponieren | 🟡 In Planning |
-| **MVP 0.2** | Sprint 3-4 (Woche 5-8) | Fahrer können reagieren | ⚪ Geplant |
-| **v1.0** | Sprint 5-6 (Woche 9-12) | Production-Ready | ⚪ Geplant |
+| **MVP 0.1** | Sprint 1-2 (Woche 1-4) | Dispatcher kann disponieren | ✅ Abgeschlossen |
+| **MVP 0.2** | Sprint 3-4 (Woche 5-8) | Fahrer können reagieren | ✅ Abgeschlossen |
+| **v1.0** | Sprint 5-6 (Woche 9-12) | Production-Ready | 🟡 In Finalisierung |
 | **v1.1** | Sprint 7+ (Post-MVP) | Operational Excellence | ⚪ Backlog |
 
 ---
@@ -61,7 +61,7 @@ Fahrer können sich anmelden, zugewiesene Fahrten sehen, bestätigen/ablehnen un
 - ✅ Fahrer pflegt Verfügbarkeit (AvailabilityGrid)
 - ✅ Fahrer pflegt Abwesenheiten
 - ✅ Email-Benachrichtigung bei Zuweisung
-- ⚠️ SMS-Benachrichtigung (optional, falls Zeit)
+- ✅ SMS-Benachrichtigung (Twilio)
 
 ### Explizit NICHT enthalten
 - ❌ Fahrt-Durchführung (Status-Updates)
@@ -117,15 +117,16 @@ System ist ausgereift für täglichen Betrieb mit erweiterten Features.
 
 ## Milestones
 
-### Milestone 1: Dispatcher Workflows (End of Sprint 2)
+### Milestone 1: Dispatcher Workflows (End of Sprint 2) ✅
 **Datum**: ca. 2026-02-25
+**Status**: Abgeschlossen
 **Definition of Done**:
-- [ ] Dispatcher kann sich anmelden
-- [ ] Dispatcher kann Patient/Fahrer/Destination anlegen
-- [ ] Dispatcher kann Fahrt erstellen und Fahrer zuweisen
-- [ ] Kalender zeigt Fahrten (Wochenansicht)
-- [ ] Fahrtenliste mit Filter nach Datum/Status/Fahrer
-- [ ] RLS Policies aktiv (Dispatcher sieht alles)
+- [x] Dispatcher kann sich anmelden
+- [x] Dispatcher kann Patient/Fahrer/Destination anlegen
+- [x] Dispatcher kann Fahrt erstellen und Fahrer zuweisen
+- [x] Kalender zeigt Fahrten (Wochenansicht)
+- [x] Fahrtenliste mit Filter nach Datum/Status/Fahrer
+- [x] RLS Policies aktiv (Dispatcher sieht alles)
 
 **Demo-Szenario**:
 1. Login als Dispatcher
@@ -136,15 +137,16 @@ System ist ausgereift für täglichen Betrieb mit erweiterten Features.
 6. Fahrer "Hans Müller" zuweisen (Dropdown zeigt Verfügbarkeit grün)
 7. Fahrt erscheint in Kalender und Fahrtenliste
 
-### Milestone 2: Driver Integration (End of Sprint 4)
+### Milestone 2: Driver Integration (End of Sprint 4) ✅
 **Datum**: ca. 2026-03-25
+**Status**: Abgeschlossen
 **Definition of Done**:
-- [ ] Fahrer kann sich anmelden
-- [ ] Fahrer sieht zugewiesene Fahrten
-- [ ] Fahrer kann Fahrt bestätigen/ablehnen
-- [ ] Fahrer kann Verfügbarkeit pflegen (AvailabilityGrid)
-- [ ] Email-Benachrichtigung bei Zuweisung funktioniert
-- [ ] Dispatcher sieht Bestätigung/Ablehnung in Echtzeit
+- [x] Fahrer kann sich anmelden
+- [x] Fahrer sieht zugewiesene Fahrten
+- [x] Fahrer kann Fahrt bestätigen/ablehnen
+- [x] Fahrer kann Verfügbarkeit pflegen (AvailabilityGrid)
+- [x] Email-Benachrichtigung bei Zuweisung funktioniert
+- [x] Dispatcher sieht Bestätigung/Ablehnung in Echtzeit
 
 **Demo-Szenario**:
 1. Dispatcher weist Fahrt Fahrer zu
@@ -154,16 +156,17 @@ System ist ausgereift für täglichen Betrieb mit erweiterten Features.
 5. Status ändert sich zu `confirmed`
 6. Dispatcher sieht Update im Kalender (Farbwechsel)
 
-### Milestone 3: Production Launch (End of Sprint 6)
+### Milestone 3: Production Launch (End of Sprint 6) 🟡
 **Datum**: ca. 2026-04-25
+**Status**: In Finalisierung
 **Definition of Done**:
-- [ ] Fahrer kann Fahrt starten/abschließen
-- [ ] Timestamps werden korrekt gespeichert
-- [ ] SMS-Benachrichtigung funktioniert
-- [ ] Alle kritischen Workflows getestet (siehe Test Plan)
-- [ ] Sicherheits-Audit abgeschlossen
-- [ ] Performance: <2s Page Load, <500ms API Response
-- [ ] Dokumentation für Endnutzer (Kurzanleitung)
+- [x] Fahrer kann Fahrt starten/abschließen (6-Schritt Workflow in `rides-driver.ts`)
+- [x] Timestamps werden korrekt gespeichert (`started_at`, `picked_up_at`, `arrived_at`, `completed_at`)
+- [x] SMS-Benachrichtigung funktioniert (Twilio, `src/lib/sms/`)
+- [ ] Alle kritischen Workflows getestet (Testplan erstellt: `docs/testplan-m3-launch.md`, Durchführung ausstehend)
+- [x] Sicherheits-Audit abgeschlossen (RLS, IDOR, Input Validation, Rate Limiting)
+- [x] Performance: <2s Page Load, <500ms API Response (parallelisierte DB-Queries, Safety Limits)
+- [x] Dokumentation für Endnutzer (`benutzerhandbuch-dispatcher.md`, `benutzerhandbuch-fahrer.md`)
 
 **Go/No-Go Kriterien**:
 - ✅ Alle P0 Bugs geschlossen
@@ -213,7 +216,7 @@ System ist ausgereift für täglichen Betrieb mit erweiterten Features.
 - **Supabase**: PostgreSQL, Auth, Real-time subscriptions
 - **Google Maps API**: Places, Directions, Maps JavaScript API
 - **Vercel**: Hosting, CI/CD
-- **Email/SMS Provider**: Supabase Auth Email + (Twilio OR MessageBird)
+- **Email/SMS Provider**: Supabase Auth Email + Twilio SMS
 
 ### Technical Constraints
 - Next.js 15 App Router (Server Components)
@@ -237,10 +240,10 @@ System ist ausgereift für täglichen Betrieb mit erweiterten Features.
 | 2026-01-28 | Rückfahrt als separate Fahrt | Einfachere DB-Logik | ✅ Final |
 | 2026-01-28 | Notifications in Sprint 2 (nicht 1) | Dispatcher-Workflows zuerst | ✅ Final |
 | 2026-01-28 | Keine Self-Service User-Registrierung | Geschlossenes System, Admin-managed | ✅ Final |
-| TBD | Kalender-Komponente | FullCalendar vs. Custom | ⚪ Offen |
-| TBD | SMS-Provider | Twilio vs. MessageBird | ⚪ Offen |
-| TBD | Wiederkehrende Fahrten Logic | RRULE vs. Custom | ⚪ Offen |
+| 2026-01-30 | Kalender-Komponente: Custom React | Volle Kontrolle, kein externes Dependency, passt zu Design System | ✅ Final |
+| 2026-01-30 | SMS-Provider: Twilio | Zuverlässig, gute API, CH-Nummern Support | ✅ Final |
+| TBD | Wiederkehrende Fahrten Logic | RRULE vs. Custom | ⚪ Offen (v1.1) |
 
 ---
 
-**Nächster Schritt**: Sprint 1 Planning (siehe `/docs/sprint-backlog.md`).
+**Nächster Schritt**: M3 Testplan durchführen (`docs/testplan-m3-launch.md`), Go/No-Go für Production Launch.
