@@ -280,12 +280,12 @@ export async function getRides(filters?: RideFilters): Promise<RideWithRelations
     query = query.eq('patient_id', validPatientId);
   }
 
-  if (filters?.limit) {
-    query = query.limit(filters.limit);
-  }
+  // Apply limit (default 200 as safety net for unbounded queries)
+  const limit = filters?.limit || 200;
+  query = query.limit(limit);
 
   if (filters?.offset) {
-    query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+    query = query.range(filters.offset, filters.offset + limit - 1);
   }
 
   const { data, error } = await query;

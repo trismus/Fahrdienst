@@ -297,44 +297,44 @@ export async function getDriversWithAvailability(
 
   const driverIds = drivers.map((d: DriverRow) => d.id);
 
-  // Get availability blocks for all drivers for this weekday
-  const { data: availabilityBlocks, error: blocksError } = await supabase
-    .from('availability_blocks')
-    .select('driver_id, start_time, end_time')
-    .in('driver_id', driverIds)
-    .eq('weekday', weekday);
-
-  if (blocksError) {
-    console.error('Error fetching availability blocks:', blocksError);
-  }
-
-  // Get absences for all drivers that overlap with pickup date
-  const { data: absences, error: absencesError } = await supabase
-    .from('absences')
-    .select('driver_id, from_date, to_date')
-    .in('driver_id', driverIds)
-    .lte('from_date', pickupDateStr)
-    .gte('to_date', pickupDateStr);
-
-  if (absencesError) {
-    console.error('Error fetching absences:', absencesError);
-  }
-
-  // Get rides for all drivers within 1 hour of pickup time
+  // Parallel fetch: availability blocks, absences, and overlapping rides
   const oneHourBefore = new Date(pickupDate.getTime() - 60 * 60 * 1000).toISOString();
   const oneHourAfter = new Date(pickupDate.getTime() + 60 * 60 * 1000).toISOString();
 
-  const { data: overlappingRides, error: ridesError } = await supabase
-    .from('rides')
-    .select('id, driver_id, pickup_time')
-    .in('driver_id', driverIds)
-    .gte('pickup_time', oneHourBefore)
-    .lte('pickup_time', oneHourAfter)
-    .not('status', 'in', '("cancelled","completed")');
+  const [blocksResult, absencesResult, ridesResult] = await Promise.all([
+    supabase
+      .from('availability_blocks')
+      .select('driver_id, start_time, end_time')
+      .in('driver_id', driverIds)
+      .eq('weekday', weekday),
+    supabase
+      .from('absences')
+      .select('driver_id, from_date, to_date')
+      .in('driver_id', driverIds)
+      .lte('from_date', pickupDateStr)
+      .gte('to_date', pickupDateStr),
+    supabase
+      .from('rides')
+      .select('id, driver_id, pickup_time')
+      .in('driver_id', driverIds)
+      .gte('pickup_time', oneHourBefore)
+      .lte('pickup_time', oneHourAfter)
+      .not('status', 'in', '("cancelled","completed")'),
+  ]);
 
-  if (ridesError) {
-    console.error('Error fetching overlapping rides:', ridesError);
+  if (blocksResult.error) {
+    console.error('Error fetching availability blocks:', blocksResult.error);
   }
+  if (absencesResult.error) {
+    console.error('Error fetching absences:', absencesResult.error);
+  }
+  if (ridesResult.error) {
+    console.error('Error fetching overlapping rides:', ridesResult.error);
+  }
+
+  const availabilityBlocks = blocksResult.data;
+  const absences = absencesResult.data;
+  const overlappingRides = ridesResult.data;
 
   // Build availability map
   const availabilityMap = new Map<string, {
@@ -658,33 +658,33 @@ export async function getDriverAvailabilityStats(): Promise<DriverAvailabilitySt
 
   const driverIds = drivers!.map((d) => d.id);
 
-  // Get absences for today
-  const { data: absences } = await supabase
-    .from('absences')
-    .select('driver_id')
-    .in('driver_id', driverIds)
-    .lte('from_date', todayStr)
-    .gte('to_date', todayStr);
+  // Parallel fetch: absences and availability blocks
+  const [absencesResult, blocksResult] = await Promise.all([
+    supabase
+      .from('absences')
+      .select('driver_id')
+      .in('driver_id', driverIds)
+      .lte('from_date', todayStr)
+      .gte('to_date', todayStr),
+    isWeekday
+      ? supabase
+          .from('availability_blocks')
+          .select('driver_id')
+          .in('driver_id', driverIds)
+          .eq('weekday', weekday)
+      : Promise.resolve({ data: null }),
+  ]);
 
-  const absentDriverIds = new Set(absences?.map((a) => a.driver_id) || []);
+  const absentDriverIds = new Set(absencesResult.data?.map((a) => a.driver_id) || []);
   const absentToday = absentDriverIds.size;
 
-  // Get drivers with availability blocks for today's weekday (only on weekdays)
   let driversWithAvailability = 0;
   let availableToday = 0;
 
-  if (isWeekday) {
-    const { data: availabilityBlocks } = await supabase
-      .from('availability_blocks')
-      .select('driver_id')
-      .in('driver_id', driverIds)
-      .eq('weekday', weekday);
-
-    // Count unique drivers with any availability block for today
-    const driversWithBlocksSet = new Set(availabilityBlocks?.map((b) => b.driver_id) || []);
+  if (isWeekday && blocksResult.data) {
+    const driversWithBlocksSet = new Set(blocksResult.data.map((b) => b.driver_id) || []);
     driversWithAvailability = driversWithBlocksSet.size;
 
-    // Available = has availability block AND not absent
     for (const driverId of driversWithBlocksSet) {
       if (!absentDriverIds.has(driverId)) {
         availableToday++;
