@@ -380,13 +380,15 @@ CREATE POLICY "Drivers can delete own absences"
 -- =============================================================================
 
 -- Trigger to automatically create a profile when a new user signs up
+-- SECURITY: Always assigns 'driver' role. Admin must promote manually.
+-- Never trust client-supplied role from raw_user_meta_data (privilege escalation risk).
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO profiles (id, role, display_name)
     VALUES (
         NEW.id,
-        COALESCE(NEW.raw_user_meta_data->>'role', 'driver'),
+        'driver',  -- ALWAYS least-privileged role, never trust client input
         COALESCE(NEW.raw_user_meta_data->>'display_name', NEW.email)
     );
     RETURN NEW;

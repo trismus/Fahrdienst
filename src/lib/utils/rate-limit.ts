@@ -31,6 +31,7 @@ export const RATE_LIMITS = {
   delete: { windowMs: 60_000, maxRequests: 5 }, // 5 deletes per minute
   login: { windowMs: 900_000, maxRequests: 5 }, // 5 login attempts per 15 min
   api: { windowMs: 60_000, maxRequests: 100 }, // 100 API requests per minute
+  maps: { windowMs: 60_000, maxRequests: 30 }, // 30 Google Maps API requests per minute (cost control)
 } as const;
 
 /**

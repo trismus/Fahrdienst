@@ -165,7 +165,7 @@ Du solltest ein Login-Formular sehen.
 1. Supabase Dashboard → **Authentication → Users**
 2. **New user** Button
 3. Email: `test-dispatcher@example.com`
-4. Passwort: `Test1234!`
+4. Passwort: Ein sicheres Passwort wählen (mind. 12 Zeichen, Gross-/Kleinbuchstaben, Zahl, Sonderzeichen)
 5. Erstellen
 
 ### 7.2 Benutzer-Rolle setzen
@@ -184,7 +184,7 @@ WHERE email = 'test-dispatcher@example.com';
 
 - Gehe zu `http://localhost:3000`
 - Email: `test-dispatcher@example.com`
-- Passwort: `Test1234!`
+- Passwort: Das in Schritt 7.1 gewählte Passwort
 - Klick **Login**
 
 ---

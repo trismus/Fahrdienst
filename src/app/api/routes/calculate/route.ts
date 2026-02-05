@@ -93,10 +93,10 @@ export async function POST(request: NextRequest) {
       return originError;
     }
 
-    // Rate limiting
+    // Rate limiting (30 req/min per user - tighter than general API due to Google Maps costs)
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateLimitKey = createRateLimitKey(null, 'api-route-calculate', ip);
-    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.api);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.maps);
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
@@ -182,10 +182,10 @@ export async function PUT(request: NextRequest) {
       return originError;
     }
 
-    // Rate limiting
+    // Rate limiting (30 req/min per user - tighter than general API due to Google Maps costs)
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateLimitKey = createRateLimitKey(null, 'api-route-matrix', ip);
-    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.api);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, RATE_LIMITS.maps);
     if (!rateLimitResult.success) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },

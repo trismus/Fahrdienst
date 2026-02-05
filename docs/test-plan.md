@@ -34,11 +34,11 @@ Dieses Dokument definiert die Test-Strategie und kritische Test-Szenarien für d
 **Ziel**: Dispatcher kann sich erfolgreich anmelden
 
 **Preconditions**:
-- Test-User existiert in Supabase: `dispatcher@test.ch` / `Test1234!`
+- Test-User existiert in Supabase: `dispatcher@test.ch` (Passwort aus `DEMO_USER_PASSWORD` in `.env.local`)
 
 **Schritte**:
 1. Öffne `/login`
-2. Eingabe: Email = `dispatcher@test.ch`, Passwort = `Test1234!`
+2. Eingabe: Email = `dispatcher@test.ch`, Passwort aus `DEMO_USER_PASSWORD`
 3. Click "Anmelden"
 
 **Erwartetes Ergebnis**:

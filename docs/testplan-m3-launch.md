@@ -29,10 +29,10 @@
 
 | Rolle | E-Mail | Passwort | Beschreibung |
 |-------|--------|----------|-------------|
-| Admin/Dispatcher | `dispatcher@test.ch` | `Test1234!` | Vollzugriff auf alle Dispatcher-Features |
-| Operator | `operator@test.ch` | `Test1234!` | Gleiche Rechte wie Dispatcher |
-| Fahrer 1 | `fahrer1@test.ch` | `Test1234!` | Hat zugewiesene Fahrten, Verfügbarkeit Mo-Fr 08-18 |
-| Fahrer 2 | `fahrer2@test.ch` | `Test1234!` | Hat eigene Fahrten, abweichende Verfügbarkeit |
+| Admin/Dispatcher | `dispatcher@test.ch` | Siehe `DEMO_USER_PASSWORD` in `.env.local` | Vollzugriff auf alle Dispatcher-Features |
+| Operator | `operator@test.ch` | Siehe `DEMO_USER_PASSWORD` in `.env.local` | Gleiche Rechte wie Dispatcher |
+| Fahrer 1 | `fahrer1@test.ch` | Siehe `DEMO_USER_PASSWORD` in `.env.local` | Hat zugewiesene Fahrten, Verfügbarkeit Mo-Fr 08-18 |
+| Fahrer 2 | `fahrer2@test.ch` | Siehe `DEMO_USER_PASSWORD` in `.env.local` | Hat eigene Fahrten, abweichende Verfügbarkeit |
 
 ### Testdaten vorbereiten
 
@@ -63,7 +63,7 @@
 **Schritte**:
 1. Öffne `/login`
 2. E-Mail eingeben: `dispatcher@test.ch`
-3. Passwort eingeben: `Test1234!`
+3. Passwort eingeben: (aus `DEMO_USER_PASSWORD` in `.env.local`)
 4. Auf "Anmelden" klicken
 
 **Erwartetes Ergebnis**:
@@ -83,7 +83,7 @@
 **Schritte**:
 1. Öffne `/login`
 2. E-Mail eingeben: `fahrer1@test.ch`
-3. Passwort eingeben: `Test1234!`
+3. Passwort eingeben: (aus `DEMO_USER_PASSWORD` in `.env.local`)
 4. Auf "Anmelden" klicken
 
 **Erwartetes Ergebnis**:
